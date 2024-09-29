@@ -96,11 +96,12 @@ class Row(Graph):
                 return node
         return None  # Return None if no node matches the label
 
-    def make_null_by_col(self, label):
-        self.make_null(self.get_node_by_column(label))
+    def make_null(self, label):
+        self.make_null_by_obj(self.get_node_by_column(label))
 
-    def make_null(self, node:Datapoint):
+    def make_null_by_obj(self, node:Datapoint):
         node.make_null()
+
     
 
 class Table:
@@ -109,6 +110,9 @@ class Table:
     - relationships: set of all relationships
     - latest_row_id
     - rows_dict: dict of id:row
+    - certain_rels: set of certain relationships
+    - possible_rels: set of possible relationships
+
     '''
     def __init__(self, column_labels, initial_table):
         self.column_labels = column_labels
@@ -117,7 +121,7 @@ class Table:
         self.rows_dict = dict()
         for initial_row in initial_table:
             self.add_row(initial_row)
-        self.get_all_relationships()
+        self.update_all_relationships()
 
 
     def __str__(self):      # printing out the table
@@ -162,19 +166,35 @@ class Table:
         # print(new_row.get_relationships_count())
         # print(new_row.get_relationships())
     
-    def get_all_relationships(self):
+    def update_all_relationships(self):
         self.relationships = set()
         for row in self.rows:
             r_set = row.get_relationships()
             self.relationships.update(r_set)
+        self.certain_rels = set()
+        self.possible_rels = set()
+        for rel in self.relationships:
+            if rel[0][1] == '*' or rel[1][1] == '*':
+                self.possible_rels.add(rel)
+            else:
+                self.certain_rels.add(rel)
 
     def get_all_relationships_count(self):
         return len(self.relationships)
 
+    def get_certain_relationships_count(self):
+        return len(self.certain_rels)
+    
+    def get_possible_relationships_count(self):
+        return len(self.possible_rels)
+
     def get_row(self, id):
         return self.rows_dict[id]
     
-
+    def make_null(self, row_id, column_label):
+        row = self.rows_dict[row_id]
+        row.make_null(column_label)
+        self.update_all_relationships()
 
 
 
@@ -184,7 +204,13 @@ class Table:
 test_table = [['A','B','C'],['A','B','B']]
 test_columns = ['Col1','Col2','Col3']
 
-created_test_table = Table(test_columns, test_table)
-print (created_test_table)
-print('Total relationships:',created_test_table.get_all_relationships_count())
-print(created_test_table.relationships)
+t1 = Table(test_columns, test_table)
+print (t1)
+print('Total relationships:',t1.get_all_relationships_count())
+print(t1.relationships)
+t1.make_null(row_id=1,column_label='Col2')
+print (t1)
+print('Certain relationships:',t1.get_certain_relationships_count())
+print(t1.certain_rels)
+print('Possible relationships:',t1.get_possible_relationships_count())
+print(t1.possible_rels)
