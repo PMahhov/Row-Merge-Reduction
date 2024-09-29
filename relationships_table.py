@@ -86,6 +86,8 @@ class Row(Graph):
             relationships.add(edge.get_relationship())
         return relationships
 
+    def get_id(self):
+        return str(self.id)
 
     def get_node_by_column(self, label):
         # Search for a node whose label matches the given column label
@@ -134,6 +136,7 @@ class Table:
                     row_values.append(str(node))
                 else:
                     row_values.append('')  # Empty string if no node for this label
+            row_values.append('--id: '+row.get_id())
             row_strs.append(', '.join(row_values))
         return f'{column_header}\n' + '\n'.join(row_strs)
 
@@ -170,6 +173,8 @@ class Table:
 
     def get_row(self, id):
         return self.rows_dict[id]
+    
+
 
 
 
