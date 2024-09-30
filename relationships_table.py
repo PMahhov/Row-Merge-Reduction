@@ -7,7 +7,7 @@ from graph import Graph
 
 import copy
 
-printing_mode = True
+printing_mode = False
 
 class Datapoint(Node):
     '''
@@ -158,10 +158,12 @@ class Table:
     - rows_dict: dict of id:row
     - certain_rels: set of certain relationships
     - possible_rels: set of possible relationships
+    - domains: dict of column_label:domain size
 
     '''
-    def __init__(self, column_labels, initial_table):
+    def __init__(self, column_labels, initial_table, domains):
         self.column_labels = column_labels
+        self.domains = domains
         self.rows = set()
         self.latest_row_id = 0
         self.rows_dict = dict()
@@ -245,6 +247,92 @@ class Table:
     def get_possible_relationships_count(self):
         return len(self.possible_rels)
 
+    # def get_wrong_answers_count(self):
+    def get_expanded_possible_relationships_count(self, printing = printing_mode):
+        # a relationship is in the form ((Col1,Val1),(Col2,Val2))
+
+        unknowns = dict()     # unknowns[frozenset([column, other column])][column] =
+                            # = for either column it gives a dictionary of other value:own value
+                            # for each column pair that has incompleteness, the unknown answers are dom(own column)*len(other values) - len of all (own values)
+
+                            # using frozenset so it can be used as an unordered immutable key to dict
+
+        for possible_rel in self.possible_rels:
+            # print('starting',possible_rel)
+            ((col1,val1),(col2,val2)) = possible_rel
+            current_set = frozenset([col1, col2])
+            if current_set not in unknowns.keys():
+                unknowns[current_set] = {col1: dict(), col2: dict()}
+                # unknowns[current_set] = {}
+
+
+            if val1 == '*' and val2 == '*':    # if the rel is * *
+                unknowns[current_set] = {col1:'full', col2:'full'}
+            else:
+                if val1 == '*':                   # if the rel is * X
+                    if col2 not in unknowns[current_set].keys():
+                        unknowns[current_set][col2] = dict()
+                    if unknowns[current_set][col2] != 'full':
+                        if val2 not in unknowns[current_set][col2]:
+                            unknowns[current_set][col2][val2] = set()                                	            # add other value if not present
+                        for certain_rel in self.certain_rels:
+                            ((cer_col1,cer_val1),(cer_col2,cer_val2)) = certain_rel
+                            if cer_col1 == col1 and cer_col2 == col2 and cer_val2 == val2 :           # the columns must match and the other value must match
+                                if cer_val2 not in unknowns[current_set][col2]:
+                                    unknowns[current_set][col2][cer_val2] = set()
+                                unknowns[current_set][col2][cer_val2].add(cer_val1)                                                   # add X if not in dict already
+
+
+                else:
+                    if col1 not in unknowns[current_set].keys():
+                        unknowns[current_set][col1] = dict()
+                    if unknowns[current_set][col1] != 'full':
+                        if val1 not in unknowns[current_set][col1]:
+                            unknowns[current_set][col1][val1] = set()  
+                        for certain_rel in self.certain_rels:
+                            ((cer_col1,cer_val1),(cer_col2,cer_val2)) = certain_rel
+                            if cer_col1 == col1 and cer_col2 == col2 and cer_val1 == val1 :           # the columns must match and the other value must match
+                                if cer_val1 not in unknowns[current_set][col1]:
+                                    unknowns[current_set][col1][cer_val1] = set()
+                                unknowns[current_set][col1][cer_val1].add(cer_val2)
+
+
+        # go through the entirety of the wrongs dict and get the dom - wrongs values or self.domains[col1] * self.domains[col2] if both full
+        if printing:
+            print('unknowns final:',unknowns)
+        expanded_possible_rel_count = 0
+        for current_dict in unknowns.values():            
+            col1, col2 = current_dict.keys()
+            if printing:
+                print('current_dict',current_dict)
+                print('col 1 and col2', col1, col2)
+            if current_dict[col1] == 'full' and current_dict[col2] == 'full':
+                expanded_possible_rel_count += self.domains[col1] * self.domains[col2]
+            else:
+                own_vals = 0
+                for key in current_dict[col1].keys():
+                    own_vals += len(current_dict[col1][key])
+                expanded_possible_rel_count += self.domains[col2] * len(current_dict[col1].keys()) - own_vals
+                if printing:
+                    print('self.domains[col2]',self.domains[col2])
+                    print('current_dict[col1]',current_dict[col1])
+                    print('length:',len(current_dict[col1].keys()))
+                    print('own vals:', own_vals)
+                    print(self.domains[col2] * len(current_dict[col1].keys()) - own_vals)
+                own_vals = 0
+                for key in current_dict[col2].keys():
+                    own_vals += len(current_dict[col2][key])
+                expanded_possible_rel_count += self.domains[col1] * len(current_dict[col2].keys()) - own_vals
+                if printing:
+                    print('self.domains[col1]',self.domains[col1])
+                    print('current_dict[col2]',current_dict[col2])
+                    print('length:',len(current_dict[col2].keys()))
+                    print('own vals:', own_vals)
+                    print(self.domains[col1] * len(current_dict[col2].keys()) - own_vals)
+        return expanded_possible_rel_count
+     
+
+
     def get_row(self, id):
         return self.rows_dict[id]
     
@@ -291,32 +379,59 @@ class Table:
 
         return merge_count
     
-    
+
+def perform_nulling(table, nulls, short_printing = True, long_printing = printing_mode):
+    # print (table)
+    if long_printing:
+        short_printing = True
+        print('Original table size:',table.get_size())
+    # if long_printing:
+    #     print('Original relationships:',table.get_all_relationships_count())
+    #     print(table.relationships)
+    for row_id, column_label in nulls:
+        table.make_null(row_id,column_label)
+    if short_printing:
+        print (table)
+        print('Final table size:', table.get_size())
+        print('Certain relationships:',table.get_certain_relationships_count())
+    if long_printing:
+        print(table.certain_rels)
+    if short_printing:
+        print('Possible relationships:',table.get_possible_relationships_count())
+    if long_printing:
+        print(table.possible_rels)
+        print('Domains:',domains)
+    if short_printing:
+        print('Count of expanded possible relationships:', table.get_expanded_possible_relationships_count())
+    return table
+
 
 test_table = [['A','B','C'],['A','B','B']]
 test_columns = ['Col1','Col2','Col3']
+domains = {'Col1':3, 'Col2':3, 'Col3':2}
 
-t1 = Table(test_columns, test_table)
+short_printing = True
+
+t1 = Table(test_columns, test_table, domains)
 print('TABLE 1')
-print (t1)
-print('Total relationships:',t1.get_all_relationships_count())
-print(t1.relationships)
-t1.make_null(row_id=1,column_label='Col2')
-print (t1)
-print('table size:', t1.get_size())
-print('Certain relationships:',t1.get_certain_relationships_count())
-print(t1.certain_rels)
-print('Possible relationships:',t1.get_possible_relationships_count())
-print(t1.possible_rels)
-
-t2 = Table(test_columns, test_table)
-t2.make_null(row_id=1, column_label='Col3')
-t2.make_null(row_id=2, column_label='Col3')
+t1 = perform_nulling(t1, [(1, 'Col2')], short_printing=short_printing)
+assert (t1.get_expanded_possible_relationships_count() == 5)
 print('------------------------------------------')
+
+t2 = Table(test_columns, test_table, domains)
 print('TABLE 2')
-print (t2)
-print('table size:', t2.get_size())
-print('Certain relationships:',t2.get_certain_relationships_count())
-print(t2.certain_rels)
-print('Possible relationships:',t2.get_possible_relationships_count())
-print(t2.possible_rels)
+t2 = perform_nulling(t2, [(1,'Col3'),(2,'Col3')], short_printing=short_printing)
+assert(t2.get_expanded_possible_relationships_count()==4)
+
+t3 = Table(['Col2','Col3'], [['A','A'],['B','B']], domains)
+print('------------------------------------------')
+print('TABLE 3')
+t3 = perform_nulling(t3, [(1,'Col2'),(2,'Col3')], short_printing=short_printing)
+assert(t3.get_expanded_possible_relationships_count() == 5)
+
+
+t3 = Table(['Col2','Col3'], [['A','A'],['B','B']], domains)
+print('------------------------------------------')
+print('TABLE 4')
+t3 = perform_nulling(t3, [(1,'Col2'),(2,'Col3'),(1,'Col3'),(2,'Col2')], short_printing=short_printing)
+assert(t3.get_expanded_possible_relationships_count() == 6)
