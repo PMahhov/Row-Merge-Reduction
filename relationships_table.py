@@ -385,6 +385,10 @@ class Table:
         self.update_all_relationships()
         merge_count = self.check_merges()
 
+    def make_null_row_col(self,row,column_label):
+        row.make_null(column_label)
+        self.update_all_relationships
+        merge_count = self.check_merges()
     
     def make_null_get_copy(self, row_id, column_label, printing = printing_mode):
         new_table = copy.deepcopy(self)
