@@ -8,6 +8,7 @@ from graph import Graph
 import copy
 
 printing_mode = False
+short_printing = False
 
 class Datapoint(Node):
     '''
@@ -16,10 +17,13 @@ class Datapoint(Node):
 	- id: id
     - attributes: empty dict
     - next: pointer to next datapoint in row if exists
+    - former_value: if nulled, what this used to be
     '''
     def __init__(self, label: str = "", name: str="", next = None, attributes=None):
         super().__init__(label, name, attributes)
         self.next = next
+        self.former_value = self.name
+
 
     def isnull(self):
         if self.name == "*":
@@ -35,6 +39,12 @@ class Datapoint(Node):
 
     def make_null(self):
         self.name = '*'
+
+    def get_column(self):
+        return self.label
+
+    def revert_nulling(self):
+        self.name = self.former_value
 
 '''
 
@@ -73,7 +83,15 @@ class Row(Graph):
         self.prev_row = None
 
     def __str__(self):
-        return  ', '.join([str(node) for node in self.nodes])
+        curr = self.first
+        output = []
+        while True:
+            output.append(str(curr))
+            if curr.next != None:
+                curr = curr.next
+            else:
+                break
+        return  ', '.join(output)
 
 
     # def __eq__(self, other) -> bool:
@@ -103,6 +121,8 @@ class Row(Graph):
                     return False
                 current_node = current_node.next     
                 second_node = second_node.next
+            if current_node.is_same(second_node) == False:      # must check last column as well
+                return False
             return True   
     
 
@@ -131,7 +151,7 @@ class Row(Graph):
         return relationships
 
     def get_id(self):
-        return str(self.id)
+        return self.id
 
     def get_node_by_column(self, label):
         # Search for a node whose label matches the given column label
@@ -161,7 +181,7 @@ class Table:
     - domains: dict of column_label:domain size
 
     '''
-    def __init__(self, column_labels, initial_table, domains):
+    def __init__(self, column_labels, initial_table, domains):      # TODO: make domains optional, give equal value if not specified
         self.column_labels = column_labels
         self.domains = domains
         self.rows = set()
@@ -197,9 +217,24 @@ class Table:
                     row_values.append(str(node))
                 else:
                     row_values.append('')  # Empty string if no node for this label
-            row_values.append('--id: '+row.get_id())
+            row_values.append('--id: '+str(row.get_id()))
             row_strs.append(', '.join(row_values))
         return f'{column_header}\n' + '\n'.join(row_strs)
+
+    def is_same(self, other) -> bool:
+        if self.get_size() != other.get_size():
+            return False
+        else:
+            current_row = self.first_row
+            other_row = other.first_row
+        while True:
+            if current_row.is_same(other_row) == False:
+                return False
+            if current_row.next_row != None:
+                current_row = current_row.next_row
+                other_row = other_row.next_row
+            else:
+                return True
 
     def add_row(self, datapoints_list, prev_row = None):
         self.latest_row_id += 1
@@ -345,43 +380,92 @@ class Table:
             print('nulled',column_label, 'on row',row_id)
             print('merges:',merge_count)
 
+    def make_null_by_obj(self, row, datapoint):
+        row.make_null_by_obj(datapoint)
+        self.update_all_relationships()
+        merge_count = self.check_merges()
+
+    
+    def make_null_get_copy(self, row_id, column_label, printing = printing_mode):
+        new_table = copy.deepcopy(self)
+        row = new_table.rows_dict[row_id]
+        row.make_null(column_label)
+        new_table.update_all_relationships()
+        merge_count = new_table.check_merges()
+        if printing:
+            print('nulled',column_label, 'on row',row_id)
+            print('merges:',merge_count)
+        return new_table
+
     def get_size(self):
         return len(self.rows)
         
             
-    def check_merges(self):
-        
-        new_rows = copy.copy(self.rows)
+    def check_merges(self, printing = printing_mode):         # guarantees that only one identical row exists in a table
 
         merge_count = 0
         current_row = self.first_row
-        other_row = current_row.next_row
-        while current_row.next_row != None:         # current row will be compared to all and deleted if duplicate
-            while other_row != None:                    # other row is the one being compared to current
-                if current_row.is_same(other_row):
-                    new_rows.remove(current_row)      
-                                                        # we adjust prev/next/first on deletion of a row
-                    second_row = current_row.next_row   # second row comes immediately after current
-                    if self.first_row == current_row:
-                        self.first_row = second_row
-                        second_row.prev_row = None
-                    else:
-                        second_row.prev_row = current_row.prev_row
-                        current_row.prev_row.next_row = second_row
+        
+        while current_row != None:
+            prev_row = current_row
+            next_row = current_row.next_row
 
+            while next_row != None:
+                if current_row.is_same(next_row):
+                    prev_row.next_row = next_row.next_row
+                    self.rows.remove(next_row)
                     merge_count += 1
-                    break
                 else:
-                    other_row = other_row.next_row      # if not equal, keep iterating the other row
+                    prev_row = next_row
+                
+                next_row = next_row.next_row
+            
             current_row = current_row.next_row
 
-        self.rows = new_rows
 
         return merge_count
+
+
+
+        # new_rows = copy.copy(self.rows)
+        # other_row = current_row.next_row
+        # print('current_row is now',current_row, 'with id',current_row.id)
+        # # print('other row is now', other_row, 'with id', other_row.id)
+        # while current_row.next_row != None:         # current row will be compared to all and deleted if duplicate
+        #     if current_row == other_row:
+        #         other_row = other_row.next_row
+        #     while other_row != None:                    # other row is the one being compared to current
+        #         print('other row is now', other_row, 'with id', other_row.id)
+        #         if current_row.is_same(other_row):
+        #             new_rows.remove(current_row)      
+        #             # if printing:
+        #             # print(self)
+        #             print('removing row',current_row, 'it is same as',other_row)
+        #                                                 # we adjust prev/next/first on deletion of a row
+        #             second_row = current_row.next_row   # second row comes immediately after current
+        #             if self.first_row == current_row:
+        #                 self.first_row = second_row
+        #                 second_row.prev_row = None
+        #             else:
+        #                 second_row.prev_row = current_row.prev_row
+        #                 current_row.prev_row.next_row = second_row
+
+        #             merge_count += 1
+        #             break
+        #         else:
+        #             other_row = other_row.next_row      # if not equal, keep iterating the other row
+        #     current_row = current_row.next_row          # the last row does not need to be compared
+        #     print('current_row is now',current_row, 'with id',current_row.id)
+
+        # self.rows = new_rows
+        # print('after',self)
+        # return merge_count
     
 
-def perform_nulling(table, nulls, short_printing = True, long_printing = printing_mode):
+def perform_nulling(table, nulls, get_copy = False, short_printing = True, long_printing = printing_mode):
     # print (table)
+    if get_copy:
+        table = copy.deepcopy(table)
     if long_printing:
         short_printing = True
         print('Original table size:',table.get_size())
@@ -410,28 +494,66 @@ test_table = [['A','B','C'],['A','B','B']]
 test_columns = ['Col1','Col2','Col3']
 domains = {'Col1':3, 'Col2':3, 'Col3':2}
 
-short_printing = True
+
+if printing_mode:
+    short_printing = True
+
+'''
+if short_printing:
+    print('TABLE 1')
 
 t1 = Table(test_columns, test_table, domains)
-print('TABLE 1')
 t1 = perform_nulling(t1, [(1, 'Col2')], short_printing=short_printing)
 assert (t1.get_expanded_possible_relationships_count() == 5)
-print('------------------------------------------')
+
+
+
+if short_printing:
+    print('------------------------------------------')
+    print('TABLE 2')
 
 t2 = Table(test_columns, test_table, domains)
-print('TABLE 2')
 t2 = perform_nulling(t2, [(1,'Col3'),(2,'Col3')], short_printing=short_printing)
 assert(t2.get_expanded_possible_relationships_count()==4)
 
+
+if short_printing:
+    print('------------------------------------------')
+    print('TABLE 3')
+
 t3 = Table(['Col2','Col3'], [['A','A'],['B','B']], domains)
-print('------------------------------------------')
-print('TABLE 3')
 t3 = perform_nulling(t3, [(1,'Col2'),(2,'Col3')], short_printing=short_printing)
 assert(t3.get_expanded_possible_relationships_count() == 5)
 
 
-t3 = Table(['Col2','Col3'], [['A','A'],['B','B']], domains)
-print('------------------------------------------')
-print('TABLE 4')
-t3 = perform_nulling(t3, [(1,'Col2'),(2,'Col3'),(1,'Col3'),(2,'Col2')], short_printing=short_printing)
-assert(t3.get_expanded_possible_relationships_count() == 6)
+if short_printing:
+    print('------------------------------------------')
+    print('TABLE 4')
+t4 = Table(['Col2','Col3'], [['A','A'],['B','B']], domains)
+t4 = perform_nulling(t4, [(1,'Col2'),(2,'Col3'),(1,'Col3'),(2,'Col2')], short_printing=short_printing)
+assert(t4.get_expanded_possible_relationships_count() == 6)
+
+# short_printing = True
+if short_printing:
+    print('------------------------------------------')
+    print('TABLE 5')
+t5 = Table(test_columns, test_table, domains)
+t5 = perform_nulling(t5, [(1,'Col3'),(1,'Col1'),(1,'Col2')], short_printing=short_printing)
+assert(t5.get_expanded_possible_relationships_count() == 21)
+
+
+if short_printing:
+    print('------------------------------------------')
+    print('TABLE 6')
+t6 = Table(test_columns, test_table, domains)
+t6 = perform_nulling(t6, [(1,'Col3'),(1,'Col1'),(1,'Col2'),(2,'Col1'),(2,'Col2'),(2,'Col3')], short_printing=short_printing)
+assert(t6.get_expanded_possible_relationships_count() == 21)
+
+
+short_printing = True
+if short_printing:
+    print('------------------------------------------')
+    print('TABLE 7')
+t7 = Table(test_columns, test_table, domains)
+t7 = perform_nulling(t7, [(1,'Col3'),(1,'Col2'),(2,'Col2'),(2,'Col3')], short_printing=short_printing)
+'''
