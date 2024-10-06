@@ -89,7 +89,7 @@ def comprehensive_algorithm(table, desired_size: int):
     candidate_tables = []
     max_certain_rels = 0
     for current_table in unique_valid_tables:
-        current_certains = table.get_certain_relationships_count() 
+        current_certains = current_table.get_certain_relationships_count() 
         if current_certains > max_certain_rels:
             max_certain_rels = current_certains
             candidate_tables = [current_table]
