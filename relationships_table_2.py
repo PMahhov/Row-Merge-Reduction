@@ -316,7 +316,7 @@ class Table:
                     print('own vals:', own_vals)
                     print(self.domains[col1] * len(current_dict[col2].keys()) - own_vals)
         # if printing:
-        print('final exp rel count', expanded_possible_rel_count, 'with compensation of', double_counting_compensation, 'and adjustment of', double_star_adjustment)
+        # print('final exp rel count', expanded_possible_rel_count, 'with compensation of', double_counting_compensation, 'and adjustment of', double_star_adjustment)
         return expanded_possible_rel_count
 
     def make_null_in_place(self, row, column_name, row_input = 'order'):     # row object or row id

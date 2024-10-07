@@ -31,7 +31,7 @@ class TableTreeNode():
         return self.table.get_certain_relationships_count()
 
     def get_exp_possibles(self):
-        return self.root_table.get_expanded_possible_relationships_count()
+        return self.table.get_expanded_possible_relationships_count()
 
     def add_layer(self):
         for i, current_row in enumerate(self.table.rows):
@@ -134,6 +134,80 @@ class TableTree():
                     final_tables.append(current_table)
             return final_tables
 
+    def greedy_algorithm_deterministic(self, desired_size: int):      # we pursue all equally best layers instead of choosing random
+                                                        # TODO: implement random version for added speed
+        valids = set()
+        if self.root.get_size() <= desired_size:
+            return self.root.table
+
+        valid_answer_exists = False
+
+        new_to_check = [self.root]
+        while not valid_answer_exists:
+            to_check = new_to_check
+            new_to_check = []
+            for tree_node in to_check:
+                tree_node.add_layer()
+                current_bests = []
+                if len(tree_node.children) > 0:
+                    max_certains = 0
+                    for i, child in enumerate(tree_node.children):
+                        if child.get_size() <= desired_size:
+                            valid_answer_exists = True
+                            valids.add(child)
+                        elif valid_answer_exists:
+                            pass
+                        else:
+                            certains = tree_node.get_certains()
+                            possibles = tree_node.get_exp_possibles()
+                            if i == 0:
+                                min_possibles = possibles
+                            if max_certains < certains:
+                                current_bests = [child]
+                                max_certains = certains
+                            elif max_certains == certains:
+                                if min_possibles < possibles:
+                                    current_bests = [child]
+                                    min_possibles = possibles
+                                elif min_possibles == possibles:
+                                    current_bests.append(child)
+                new_to_check += current_bests
+
+        if len(valids) == 1:
+            for v in valids:
+                return [v.table]
+
+        # compare all valid solutions
+
+        max_certains = 0
+        current_bests = []
+        for i, v in enumerate(valids):
+            certains = v.get_certains()
+            possibles = v.get_exp_possibles()
+            if i == 0:
+                min_possibles = possibles
+            if max_certains < certains:
+                current_bests = [v.table]
+                max_certains = certains
+            elif max_certains == certains:
+                if min_possibles < possibles:
+                    current_bests = [v.table]
+                elif min_possibles == possibles:
+                    current_bests.append(v.table)
+
+        # remove duplicates
+        unique_current_bests = []
+        for current_table in current_bests:
+            if not any(existing_table.is_same(current_table) for existing_table in unique_current_bests):
+                unique_current_bests.append(current_table)
+
+        return unique_current_bests
+
+    def greedy_algorithm_random(self, desired_size: int):
+        # same as deterministic except new_to_check is now a list of lists
+        # when we new_to_check += current_bests, it becomes adding a new list
+        # before we do for tree_node in to_check, we choose one of the lists at random from new_to_check
+        pass
 
 test_table = [['A','B','C'],['A','B','B']]
 test_columns = ['Col1','Col2','Col3']
@@ -146,13 +220,38 @@ domains = {'Col1':3, 'Col2':3, 'Col3':2}
 # for answer in answers:
 #     print(answer)
 
-def find_answer(table, desired_size, alg = ['comp','greedy']):
+def find_answer(table, desired_size, alg = ['comp','greedy_det']):
     tree = TableTree(table)
     if 'comp' in alg:
+        start_comp = time.time()
         comp_answers = tree.comprehensive_algorithm(desired_size)
+        end_comp = time.time()
         print('comprehensive answers:')
         for comp_answer in comp_answers:
             print (comp_answer)
+        time_comp = end_comp - start_comp
+        if time_comp > 5:
+            print('Comprehensive calculation took',time_comp,'seconds')
+    if 'greedy_det' in alg:
+        start_greedy_det = time.time()
+        greedy_det_answers = tree.greedy_algorithm_deterministic(desired_size)
+        end_greedy_det = time.time()
+        print('greedy_det_answers:')
+        for greedy_det_answer in greedy_det_answers:
+            print(greedy_det_answer)
+        time_greedy_det = end_greedy_det - start_greedy_det
+        if time_greedy_det > 5:
+            print('Greedy deterministic took', time_greedy_det, 'seconds')
+    if 'greedy_random' in alg:
+        start_greedy_random = time.time()
+        greedy_random_answers = tree.greedy_algorithm_random(desired_size)
+        end_greedy_random = time.time()
+        print('greedy_random_answers:')
+        for greedy_random_answer in greedy_random_answers:
+            print(greedy_random_answer)
+        time_greedy_random = end_greedy_random - start_greedy_random
+        if time_greedy_random > 5:
+            print('Greedy random took',time_greedy_random,'seconds')
 
 t1 = Table(test_columns, test_table, domains)
 print(t1)
@@ -166,14 +265,14 @@ find_answer(t2,1)
 
 print('-----------------------------------------------')
 print('test 3')
-t3 = Table(test_columns,  [['A','B','C'],['A','C','B'],['C','B','A']], domains)         # comp took 0.43 sec to run
+t3 = Table(test_columns,  [['A','B','C'],['A','C','B'],['C','B','A']], domains)         # comp took 53 sec to run
 print('original table:')
 print(t3)
 start = time.time()
 find_answer(t3,2)
 
 end = time.time()
-print('time elapsed:',str(end-start))
+print('total time elapsed for test 3:',str(end-start))
 
 
 # test_t = Table(['Col1','Col2'],[['A','B'],['C','D']], domains)
