@@ -16,7 +16,7 @@ class TableTreeNode():
         self.children = []
 
     def __str__(self):
-        return print(self.table)
+        return str(self.table)
 
     def add_child(self, child):
         self.children.append(child)
@@ -41,23 +41,36 @@ class TableTreeNode():
                 # row_id = current_row.get_id()
                 # new_rows = copy.copy(self.table.rows)
                 # new_table = Table(columns = self.table.columns, initial=self.table.rows)
-                    new_table = copy.copy(self.table)
+                    # new_table = copy.deepcopy(self.table)       # for 3x3,  2 minutes down from 40
+                    new_table = Table(columns = self.table.columns, initial_list=self.table.rows, domains=self.table.domains, origin ='row objects')    # 1 min for 3x3
                     new_table.make_null_copying_row(current_row, current_column)
                     new_nullings = copy.deepcopy(self.nullings)
                     new_nullings.append((current_row.get_id(), current_column))
                     new_node = TableTreeNode(new_table, new_nullings)
                     self.children.append(new_node)
+        # print('children of')
+        # print(self.table)
+        # print('are')
+        # print(self.children)
+        # for c in self.children:
+        #     print(c.table)
 
-    def check_children_thoroughly(self, desired_size: int, valid_tables = set()):
+    def check_children_thoroughly(self, desired_size: int, valid_tables = set(), loading_screen = True):
         self.add_layer()
         if len(self.children) > 0:
+            # print('children of')
+            # print(self.table)
+            # print('are')
+            # print(self.children)
+            # for c in self.children:
+            #     print(c.table)
             for i, child in enumerate(self.children):
                 if child.get_size() <= desired_size:
                     valid_tables.add(child.table)
                       # you can't get a better result by performing more nullings, so can stop recursion here 
                       # (need to prove it in-paper)
                 else:
-                    if self.get_layer() < 4 and len(self.children) > 5: # loading screen
+                    if loading_screen and self.get_layer() < 4 and len(self.children) > 8: # loading screen
                         print('child',i,'of',len(self.children),'in layer',self.get_layer())
                     # print('child',i,'of',len(self.children),'in layer',self.get_layer())
                     valid_tables.update(child.check_children_thoroughly(desired_size, valid_tables))
@@ -133,13 +146,39 @@ domains = {'Col1':3, 'Col2':3, 'Col3':2}
 # for answer in answers:
 #     print(answer)
 
-def find_answer(table, desired_size):
+def find_answer(table, desired_size, alg = ['comp','greedy']):
     tree = TableTree(table)
-    comp_answers = tree.comprehensive_algorithm(desired_size)
-    print('comprehensive answers:')
-    for comp_answer in comp_answers:
-        print (comp_answer)
+    if 'comp' in alg:
+        comp_answers = tree.comprehensive_algorithm(desired_size)
+        print('comprehensive answers:')
+        for comp_answer in comp_answers:
+            print (comp_answer)
 
 t1 = Table(test_columns, test_table, domains)
 print(t1)
 find_answer(t1, 1)
+
+print('-----------------------------------------------')
+print('test 2')
+t2 = Table(test_columns,  [['A','B','C'],['A','C','B']], domains)
+print(t2)
+find_answer(t2,1)
+
+print('-----------------------------------------------')
+print('test 3')
+t3 = Table(test_columns,  [['A','B','C'],['A','C','B'],['C','B','A']], domains)         # comp took 0.43 sec to run
+print('original table:')
+print(t3)
+start = time.time()
+find_answer(t3,2)
+
+end = time.time()
+print('time elapsed:',str(end-start))
+
+
+# test_t = Table(['Col1','Col2'],[['A','B'],['C','D']], domains)
+# ttn = TableTreeNode(test_t)
+# print(ttn.table)
+# ttn.add_layer()
+# for c in ttn.children:
+#     print(c)

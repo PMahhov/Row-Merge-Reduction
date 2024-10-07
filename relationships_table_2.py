@@ -169,6 +169,7 @@ class Table:
 
         double_counting_compensation = 0
         double_counting = False
+        double_star_adjustment = 0
 
         for possible_rel in self.possible_rels:
             ((col1,val1),(col2,val2)) = possible_rel
@@ -178,7 +179,12 @@ class Table:
                 # unknowns[current_set] = {}
 
             if val1 == '*' and val2 == '*':    # if the rel is * *
-                unknowns[current_set] = {col1:'full', col2:'full'}
+                if unknowns[current_set][col1] != 'full':
+                    unknowns[current_set] = {col1:'full', col2:'full'}
+                    for certain_rel in self.certain_rels:
+                        ((cer_col1,cer_val1),(cer_col2,cer_val2)) = certain_rel         # every certain rel with same columns needs to be removed
+                        if (cer_col1 == col1 and cer_col2 == col2) or (cer_col1 == col2 and cer_col2 == col1):
+                            double_star_adjustment += 1
             else:
                 if val1 == '*':                   # if the rel is * X
                     if col2 not in unknowns[current_set].keys():
@@ -280,7 +286,7 @@ class Table:
             print('unknowns final:',unknowns)
         
 
-        expanded_possible_rel_count = 0 + double_counting_compensation
+        expanded_possible_rel_count = 0 + double_counting_compensation - double_star_adjustment
         for current_dict in unknowns.values():            
             col1, col2 = current_dict.keys()
             if printing:
@@ -309,7 +315,8 @@ class Table:
                     print('length:',len(current_dict[col2].keys()))
                     print('own vals:', own_vals)
                     print(self.domains[col1] * len(current_dict[col2].keys()) - own_vals)
-        print('final answer', expanded_possible_rel_count, 'with compensation of', double_counting_compensation)
+        # if printing:
+        print('final exp rel count', expanded_possible_rel_count, 'with compensation of', double_counting_compensation, 'and adjustment of', double_star_adjustment)
         return expanded_possible_rel_count
 
     def make_null_in_place(self, row, column_name, row_input = 'order'):     # row object or row id
@@ -495,3 +502,27 @@ if testing:
 
 
 
+    if short_printing:
+        print('------------------------------------------')
+        print('TABLE 9')
+    t9 = Table(test_columns, [['C','B','A'],['A','*','*']], domains)
+    print(t9)
+    print(t9.get_expanded_possible_relationships_count())
+    assert(t9.get_expanded_possible_relationships_count() == 10)
+
+
+    if short_printing:
+        print('------------------------------------------')
+        print('TABLE 10')
+    t10 = Table(test_columns, [['A','C','B'],['*','B','*']], domains)
+    print(t10)
+    print(t10.get_expanded_possible_relationships_count())
+    assert(t10.get_expanded_possible_relationships_count() == 10)
+
+
+# t11 = Table(test_columns, [['A','B','C'],['A','C','B'],['C','B','A']], domains)
+# print(t11)
+# t11 = perform_nulling(t11, [(0,'Col1'),(0,'Col3'),(2,'Col1'),(2,'Col3')])
+# print(t11)
+# print(t11.get_expanded_possible_relationships_count())
+# print(t11.get_certain_relationships_count())
