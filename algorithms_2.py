@@ -1,7 +1,7 @@
 from relationships_table_2 import Table
 import copy
 import time
-
+import random
 
 class TableTreeNode():
     '''
@@ -58,21 +58,14 @@ class TableTreeNode():
     def check_children_thoroughly(self, desired_size: int, valid_tables = set(), loading_screen = True):
         self.add_layer()
         if len(self.children) > 0:
-            # print('children of')
-            # print(self.table)
-            # print('are')
-            # print(self.children)
-            # for c in self.children:
-            #     print(c.table)
             for i, child in enumerate(self.children):
                 if child.get_size() <= desired_size:
                     valid_tables.add(child.table)
                       # you can't get a better result by performing more nullings, so can stop recursion here 
                       # (need to prove it in-paper)
                 else:
-                    if loading_screen and self.get_layer() < 4 and len(self.children) > 8: # loading screen
-                        print('child',i,'of',len(self.children),'in layer',self.get_layer())
-                    # print('child',i,'of',len(self.children),'in layer',self.get_layer())
+                    if loading_screen and self.get_layer() < 2 and len(self.children) > 8: # loading screen
+                        print('child',i+1,'of',len(self.children),'in layer',self.get_layer())
                     valid_tables.update(child.check_children_thoroughly(desired_size, valid_tables))
         return valid_tables
 
@@ -85,6 +78,11 @@ class TableTree():
         self.root = TableTreeNode(table)
 
     def comprehensive_algorithm(self, desired_size: int, printing = False):
+        # reset children:   
+               # TODO: even if there might be benefits from running multiple algorithms at once, that's not the point of the study
+               # for the purposes of this work, they must be independent so they can be compared
+        self.root.children = []
+
         print('starting comprehensive algorithm with table size',self.root.get_size())
         valid_tables = set()
 
@@ -135,16 +133,140 @@ class TableTree():
             return final_tables
 
     def greedy_algorithm_deterministic(self, desired_size: int):      # we pursue all equally best layers instead of choosing random
-                                                        # TODO: implement random version for added speed
+        return self.greedy_algorithm(desired_size, deterministic = True)
+
+    # for the current node:
+        # check all children
+        # take all the best children, add to queue to become current node
+
+    def greedy_algorithm_random(self, desired_size: int):
+        return self.greedy_algorithm(desired_size, deterministic = False)
+
+    # for the current node:
+        #check all children
+        # out of the best children, pick one at random
+
+
+
+        # mechanically same as deterministic except new_to_check is now a list of lists
+            # when we new_to_check += current_bests, it becomes adding a new list
+            # before we do for tree_node in to_check, we choose one of the lists at random from new_to_check
+
+# comprehensive up to valid is like comprehensive but stops when a layer has a valid size answer
+    def comp_up_to_valid_det(self,desired_size: int):
+        return self.greedy_algorithm(desired_size, deterministic = True, comp_up_to_valid=True)
+
+    def comp_up_to_valid_rand(self,desired_size: int):
+        return self.greedy_algorithm(desired_size, deterministic = False, comp_up_to_valid=True)
+
+    def greedy_algorithm(self, desired_size: int, deterministic, comp_up_to_valid = False):      # we pursue all equally best layers instead of choosing random
+        # reset children
+        self.root.children = []
+        
+        valids = set()
+        if self.root.get_size() <= desired_size:
+            return self.root.table
+
+        valid_answer_exists = False
+        if deterministic:
+            new_to_check = [self.root]
+        else:
+            new_to_check = [[self.root]]
+        while not valid_answer_exists:
+            if deterministic:
+                to_check = new_to_check
+            else:
+                to_check = random.choice(new_to_check)
+            new_to_check = []
+            for tree_node in to_check:
+                # print('checking:')
+                # print(tree_node.table)
+                tree_node.add_layer()
+                current_bests = []
+                if len(tree_node.children) > 0:
+                    max_certains = 0
+                    for i, child in enumerate(tree_node.children):
+                        if child.get_size() <= desired_size:
+                            valid_answer_exists = True
+                            valids.add(child)
+                        elif valid_answer_exists:
+                            pass
+                        elif comp_up_to_valid:
+                            current_bests.append(child)   # add all children to next layer if no valid found
+                        else:
+                            # certains = tree_node.get_certains()
+                            # possibles = tree_node.get_exp_possibles()
+                            # print('child is')
+                            # print(child.table)
+                            certains = child.get_certains()
+                            # print(child.table.certain_rels)
+                            possibles = child.get_exp_possibles()
+                            # print(certains, possibles)
+                            if i == 0:
+                                min_possibles = possibles
+                            if max_certains < certains:
+                                current_bests = [child]
+                                max_certains = certains
+                                min_possibles = possibles
+                            elif max_certains == certains:
+                                if min_possibles < possibles:
+                                    current_bests = [child]
+                                    min_possibles = possibles
+                                elif min_possibles == possibles:
+                                    current_bests.append(child)
+                if deterministic:
+                    new_to_check += current_bests
+                else:
+                    new_to_check.append(current_bests)
+
+
+        # print('valids')
+        # for v in valids:
+        #     print(v.table)
+
+        if len(valids) == 1:
+            for v in valids:
+                return [v.table]
+
+        # compare all found valid solutions
+
+        max_certains = 0
+        current_bests = []
+        for i, v in enumerate(valids):
+            certains = v.get_certains()
+            possibles = v.get_exp_possibles()
+            if i == 0:
+                min_possibles = possibles
+            if max_certains < certains:
+                current_bests = [v.table]
+                max_certains = certains
+                min_possibles = possibles       # certains override possibles (this is a matter of preference)
+            elif max_certains == certains:
+                if min_possibles < possibles:
+                    current_bests = [v.table]
+                elif min_possibles == possibles:
+                    current_bests.append(v.table)
+
+        # remove duplicates
+        unique_current_bests = []
+        for current_table in current_bests:
+            if not any(existing_table.is_same(current_table) for existing_table in unique_current_bests):
+                unique_current_bests.append(current_table)
+
+        return unique_current_bests
+
+'''
+    def greedy_algorithm_random(self, desired_size: int):
+        
         valids = set()
         if self.root.get_size() <= desired_size:
             return self.root.table
 
         valid_answer_exists = False
 
-        new_to_check = [self.root]
+        new_to_check = [[self.root]]
         while not valid_answer_exists:
-            to_check = new_to_check
+            to_check = random.choice(new_to_check)
             new_to_check = []
             for tree_node in to_check:
                 tree_node.add_layer()
@@ -158,20 +280,23 @@ class TableTree():
                         elif valid_answer_exists:
                             pass
                         else:
-                            certains = tree_node.get_certains()
-                            possibles = tree_node.get_exp_possibles()
+                            # certains = tree_node.get_certains()
+                            # possibles = tree_node.get_exp_possibles()
+                            certains = child.get_certains()
+                            possibles = child.get_exp_possibles()
                             if i == 0:
                                 min_possibles = possibles
                             if max_certains < certains:
                                 current_bests = [child]
                                 max_certains = certains
+                                min_possibles = possibles   # certains override possibles (this is a matter of preference)
                             elif max_certains == certains:
                                 if min_possibles < possibles:
                                     current_bests = [child]
                                     min_possibles = possibles
                                 elif min_possibles == possibles:
                                     current_bests.append(child)
-                new_to_check += current_bests
+                new_to_check.append(current_bests)
 
         if len(valids) == 1:
             for v in valids:
@@ -189,6 +314,7 @@ class TableTree():
             if max_certains < certains:
                 current_bests = [v.table]
                 max_certains = certains
+                min_possibles = possibles
             elif max_certains == certains:
                 if min_possibles < possibles:
                     current_bests = [v.table]
@@ -202,17 +328,7 @@ class TableTree():
                 unique_current_bests.append(current_table)
 
         return unique_current_bests
-
-    def greedy_algorithm_random(self, desired_size: int):
-        # same as deterministic except new_to_check is now a list of lists
-        # when we new_to_check += current_bests, it becomes adding a new list
-        # before we do for tree_node in to_check, we choose one of the lists at random from new_to_check
-        pass
-
-test_table = [['A','B','C'],['A','B','B']]
-test_columns = ['Col1','Col2','Col3']
-domains = {'Col1':3, 'Col2':3, 'Col3':2}
-
+'''
 # t1 = Table(test_columns, test_table, domains)
 # tr1 = TableTree(t1)
 # answers = tr1.comprehensive_algorithm(1)
@@ -220,60 +336,110 @@ domains = {'Col1':3, 'Col2':3, 'Col3':2}
 # for answer in answers:
 #     print(answer)
 
-def find_answer(table, desired_size, alg = ['comp','greedy_det']):
+def find_answer(table, desired_size, alg = ['comp','greedy_det','greedy_random','CVD','CVR'], time_to_show = 0):
     tree = TableTree(table)
-    if 'comp' in alg:
-        start_comp = time.time()
-        comp_answers = tree.comprehensive_algorithm(desired_size)
-        end_comp = time.time()
-        print('comprehensive answers:')
-        for comp_answer in comp_answers:
-            print (comp_answer)
-        time_comp = end_comp - start_comp
-        if time_comp > 5:
-            print('Comprehensive calculation took',time_comp,'seconds')
-    if 'greedy_det' in alg:
-        start_greedy_det = time.time()
-        greedy_det_answers = tree.greedy_algorithm_deterministic(desired_size)
-        end_greedy_det = time.time()
-        print('greedy_det_answers:')
-        for greedy_det_answer in greedy_det_answers:
-            print(greedy_det_answer)
-        time_greedy_det = end_greedy_det - start_greedy_det
-        if time_greedy_det > 5:
-            print('Greedy deterministic took', time_greedy_det, 'seconds')
     if 'greedy_random' in alg:
         start_greedy_random = time.time()
         greedy_random_answers = tree.greedy_algorithm_random(desired_size)
         end_greedy_random = time.time()
         print('greedy_random_answers:')
-        for greedy_random_answer in greedy_random_answers:
-            print(greedy_random_answer)
+        for answer in greedy_random_answers:
+            print(answer)
         time_greedy_random = end_greedy_random - start_greedy_random
-        if time_greedy_random > 5:
+        if time_greedy_random > time_to_show:
             print('Greedy random took',time_greedy_random,'seconds')
+    if 'greedy_det' in alg:
+        start_greedy_det = time.time()
+        greedy_det_answers = tree.greedy_algorithm_deterministic(desired_size)
+        end_greedy_det = time.time()
+        print('greedy_det_answers:')
+        for answer in greedy_det_answers:
+            print(answer)
+        time_greedy_det = end_greedy_det - start_greedy_det
+        if time_greedy_det > time_to_show:
+            print('Greedy deterministic took', time_greedy_det, 'seconds')
+    if 'CVR' in alg:
+        start_cvr = time.time()
+        cvr_answers = tree.comp_up_to_valid_rand(desired_size)
+        end_cvr = time.time()
+        print('cvr answers:')
+        for answer in cvr_answers:
+            print (answer)
+        time_cvr = end_cvr - start_cvr
+        if time_cvr > time_to_show:
+            print('CVR calculation took',time_cvr,'seconds')
+    if 'CVD' in alg:
+        start_cvd = time.time()
+        cvd_answers = tree.comp_up_to_valid_det(desired_size)
+        end_cvd = time.time()
+        print('cvd answers:')
+        for answer in cvd_answers:
+            print (answer)
+        time_cvd = end_cvd - start_cvd
+        if time_cvd > time_to_show:
+            print('CVD calculation took',time_cvd,'seconds')
+    if 'comp' in alg:
+        start_comp = time.time()
+        comp_answers = tree.comprehensive_algorithm(desired_size)
+        end_comp = time.time()
+        print('comprehensive answers:')
+        for answer in comp_answers:
+            print (answer)
+        time_comp = end_comp - start_comp
+        if time_comp > time_to_show:
+            print('Comprehensive calculation took',time_comp,'seconds')
 
-t1 = Table(test_columns, test_table, domains)
-print(t1)
-find_answer(t1, 1)
+test_table = [['A','B','C'],['A','B','B']]
+test_columns = ['Col1','Col2','Col3']
+domains = {'Col1':3, 'Col2':3, 'Col3':2, 'Col4':2}
 
-print('-----------------------------------------------')
-print('test 2')
-t2 = Table(test_columns,  [['A','B','C'],['A','C','B']], domains)
-print(t2)
-find_answer(t2,1)
+# t1 = Table(test_columns, test_table, {'Col1':3, 'Col2':3, 'Col3':3})
+# print(t1)
+# find_answer(t1, 1)
+# # find_answer(t1, 1, ['greedy_det','greedy_random'])
+
+
+# print('-----------------------------------------------')
+# print('test 2')
+# t2 = Table(test_columns,  [['A','B','C'],['A','C','B']], domains)
+# print(t2)
+# find_answer(t2,1)
 
 print('-----------------------------------------------')
 print('test 3')
-t3 = Table(test_columns,  [['A','B','C'],['A','C','B'],['C','B','A']], domains)         # comp took 53 sec to run
+t3 = Table(test_columns,  [['A','B','C'],['A','C','B'],['C','B','A']], domains)         # comp took 53,58,74 sec to run
 print('original table:')
 print(t3)
 start = time.time()
+# find_answer(t3,2, ['greedy_det','greedy_random'])
 find_answer(t3,2)
 
 end = time.time()
 print('total time elapsed for test 3:',str(end-start))
+'''
+print('-----------------------------------------------')
+print('test 4')
+t3 = Table(test_columns+['Col4'],  [['A','B','C','A'],['A','C','B','A'],['C','B','A','B']], domains)
+print('original table:')
+print(t3)
+start = time.time()
+find_answer(t3,2,['greedy_det','greedy_random'])
 
+end = time.time()
+print('total time elapsed for test 4:',str(end-start))
+'''
+
+# print('-----------------------------------------------')
+# print('test 5')
+# t3 = Table(test_columns,  [['A','B','C'],['A','C','B'],['C','B','A'],['A','C','C']], domains)      
+# print('original table:')
+# print(t3)
+# start = time.time()
+# find_answer(t3,2, ['comp'])
+# # find_answer(t3,2,['greedy_det','greedy_random'])        # 14 sec vs 0.1s for det vs rand
+
+# end = time.time()
+# print('total time elapsed for test 5:',str(end-start))
 
 # test_t = Table(['Col1','Col2'],[['A','B'],['C','D']], domains)
 # ttn = TableTreeNode(test_t)
