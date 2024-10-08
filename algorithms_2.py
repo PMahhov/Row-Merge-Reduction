@@ -87,7 +87,7 @@ class TableTree():
         valid_tables = set()
 
         if self.root.get_size() <= desired_size:
-            return self.root.table        # if the first table already qualifies, can't get a better result by nulling more
+            return [self.root.table]        # if the first table already qualifies, can't get a better result by nulling more
 
         # get all tables of the right size
         valid_tables.update(self.root.check_children_thoroughly(desired_size, valid_tables))
@@ -132,15 +132,38 @@ class TableTree():
                     final_tables.append(current_table)
             return final_tables
 
+
+
+    '''
+algorithm qualities
+greedy (vs wide): 
+in a current layer, don't pick the children that are not the best in the layer
+
+random (vs deterministic): 
+in a current layer, if you would choose many children to continue with, only pick one of them at random
+
+deep (vs shallow): 
+don't stop even if a valid answer has been found in the latest layer
+
+
+algorithms:
+comp - wide, deep, deterministic
+wsd - wide, shallow, deterministic
+wsr - wide, shallow, random
+greedy_deep_det - greedy, deep, deterministic
+greedy_det - greedy, shallow, deterministic
+greedy random - greedy, shallow, random
+'''
+
     def greedy_algorithm_deterministic(self, desired_size: int):      # we pursue all equally best layers instead of choosing random
-        return self.greedy_algorithm(desired_size, deterministic = True)
+        return self.shallow_algorithm(desired_size, deterministic = True, greedy = True)
 
     # for the current node:
         # check all children
         # take all the best children, add to queue to become current node
 
     def greedy_algorithm_random(self, desired_size: int):
-        return self.greedy_algorithm(desired_size, deterministic = False)
+        return self.shallow_algorithm(desired_size, deterministic = False, greedy = True)
 
     # for the current node:
         #check all children
@@ -152,20 +175,24 @@ class TableTree():
             # when we new_to_check += current_bests, it becomes adding a new list
             # before we do for tree_node in to_check, we choose one of the lists at random from new_to_check
 
-# comprehensive up to valid is like comprehensive but stops when a layer has a valid size answer
-    def comp_up_to_valid_det(self,desired_size: int):
-        return self.greedy_algorithm(desired_size, deterministic = True, comp_up_to_valid=True)
+# wide-shallow-deep (WSD) is like comprehensive but BFS and stops when a layer has a valid size answer
+    # e.g. if there is a valid answer on layer 2, no layer 3 calculations are performed
+    def wide_shallow_det(self,desired_size: int):
+        return self.shallow_algorithm(desired_size, deterministic = True, greedy = False)
 
-    def comp_up_to_valid_rand(self,desired_size: int):
-        return self.greedy_algorithm(desired_size, deterministic = False, comp_up_to_valid=True)
+# the random version (WSR) picks a random node to continue with for the next layer out of all the children without looking at the metrics
+    def wide_shallow_rand(self,desired_size: int):
+        return self.shallow_algorithm(desired_size, deterministic = False, greedy = False)
 
-    def greedy_algorithm(self, desired_size: int, deterministic, comp_up_to_valid = False):      # we pursue all equally best layers instead of choosing random
+
+# comp up to valid is the choice between greedy and not greedy
+    def shallow_algorithm(self, desired_size: int, deterministic, greedy):      # we pursue all equally best layers instead of choosing random
         # reset children
         self.root.children = []
         
         valids = set()
         if self.root.get_size() <= desired_size:
-            return self.root.table
+            return [self.root.table]
 
         valid_answer_exists = False
         if deterministic:
@@ -192,7 +219,7 @@ class TableTree():
                             valids.add(child)
                         elif valid_answer_exists:
                             pass
-                        elif comp_up_to_valid:
+                        elif not greedy:
                             current_bests.append(child)   # add all children to next layer if no valid found
                         else:
                             # certains = tree_node.get_certains()
@@ -257,14 +284,110 @@ class TableTree():
 
         return unique_current_bests
 
-# t1 = Table(test_columns, test_table, domains)
-# tr1 = TableTree(t1)
-# answers = tr1.comprehensive_algorithm(1)
-# print('comprehensive answers:')
-# for answer in answers:
-#     print(answer)
+    def greedy_deep_det(self, desired_size: int):
+        return self.deep_algorithm(desired_size, deterministic=True, greedy = True)
 
-def find_answer(table, desired_size, alg = ['comp','greedy_det','greedy_random','CVD','CVR'], time_to_show = 0):
+    def greedy_deep_rand(self, desired_size: int):
+        return self.deep_algorithm(desired_size, deterministic=False, greedy=True)
+
+# TODO: greedy algorithm that checks next layer even if current layer has valid answer
+    def deep_algorithm(self, desired_size: int, deterministic = True, greedy = True):      # we pursue all equally best layers instead of choosing random
+        # reset children
+        self.root.children = []
+        
+        valids = set()
+        if self.root.get_size() <= desired_size:
+            return [self.root.table]
+
+        # valid_answer_exists = False
+        if deterministic:
+            new_to_check = [self.root]
+        else:
+            new_to_check = [[self.root]]
+        while len(new_to_check) >0:
+            if deterministic:
+                to_check = new_to_check
+            else:
+                to_check = random.choice(new_to_check)
+            new_to_check = []
+            for tree_node in to_check:
+                # print('checking:')
+                # print(tree_node.table)
+                # print(tree_node.get_certains(), tree_node.get_exp_possibles())
+                tree_node.add_layer()
+                current_bests = []
+                if len(tree_node.children) > 0:
+                    max_certains = 0
+                    for i, child in enumerate(tree_node.children):
+                        if child.get_size() <= desired_size:
+                            # valid_answer_exists = True
+                            valids.add(child)
+                        # elif valid_answer_exists:
+                        #     pass
+                        else:
+                            # certains = tree_node.get_certains()
+                            # possibles = tree_node.get_exp_possibles()
+                            # print('child is')
+                            # print(child.table)
+                            # print(child.get_certains(), child.get_exp_possibles())
+                            certains = child.get_certains()
+                            # print(child.table.certain_rels)
+                            possibles = child.get_exp_possibles()
+                            # print(certains, possibles)
+                            if i == 0:
+                                min_possibles = possibles
+                            if max_certains < certains:
+                                current_bests = [child]
+                                max_certains = certains
+                                min_possibles = possibles
+                            elif max_certains == certains:
+                                if min_possibles > possibles:
+                                    current_bests = [child]
+                                    min_possibles = possibles
+                                elif min_possibles == possibles:
+                                    current_bests.append(child)
+                if deterministic:
+                    new_to_check += current_bests
+                else:
+                    new_to_check.append(current_bests)
+
+
+        # print('valids')
+        # for v in valids:
+        #     print(v.table)
+
+        if len(valids) == 1:
+            for v in valids:
+                return [v.table]
+
+        # compare all found valid solutions
+
+        max_certains = 0
+        current_bests = []
+        for i, v in enumerate(valids):
+            certains = v.get_certains()
+            possibles = v.get_exp_possibles()
+            if i == 0:
+                min_possibles = possibles
+            if max_certains < certains:
+                current_bests = [v.table]
+                max_certains = certains
+                min_possibles = possibles       # certains override possibles (this is a matter of preference)
+            elif max_certains == certains:
+                if min_possibles > possibles:
+                    current_bests = [v.table]
+                elif min_possibles == possibles:
+                    current_bests.append(v.table)
+
+        # remove duplicates
+        unique_current_bests = []
+        for current_table in current_bests:
+            if not any(existing_table.is_same(current_table) for existing_table in unique_current_bests):
+                unique_current_bests.append(current_table)
+
+        return unique_current_bests
+
+def find_answer(table, desired_size, alg = ['comp','greedy_det','greedy_random','WSD','WSR', 'greedy_deep_det'], time_to_show = 0):
     tree = TableTree(table)
     print('alg is',alg)
     if alg == 'all except comp' or 'greedy_random' in alg:
@@ -291,30 +414,42 @@ def find_answer(table, desired_size, alg = ['comp','greedy_det','greedy_random',
         time_greedy_det = end_greedy_det - start_greedy_det
         if time_greedy_det > time_to_show:
             print('Greedy deterministic took', time_greedy_det, 'seconds')
-    if alg == 'all except comp' or 'CVR' in alg:
-        start_cvr = time.time()
-        cvr_answers = tree.comp_up_to_valid_rand(desired_size)
-        end_cvr = time.time()
-        print('cvr answers:')
-        for answer in cvr_answers:
+    if alg == 'all except comp' or 'WSR' in alg:
+        start_wsr = time.time()
+        wsr_answers = tree.wide_shallow_rand(desired_size)
+        end_wsr = time.time()
+        print('WSR answers:')
+        for answer in wsr_answers:
             print (answer)
             print('certain rels:',answer.get_certain_relationships_count())
             print('possible rels:',answer.get_expanded_possible_relationships_count())
-        time_cvr = end_cvr - start_cvr
-        if time_cvr > time_to_show:
-            print('CVR calculation took',time_cvr,'seconds')
-    if alg == 'all except comp' or 'CVD' in alg:
-        start_cvd = time.time()
-        cvd_answers = tree.comp_up_to_valid_det(desired_size)
-        end_cvd = time.time()
-        print('cvd answers:')
-        for answer in cvd_answers:
+        time_wsr = end_wsr - start_wsr
+        if time_wsr > time_to_show:
+            print('Wide shallow random calculation took',time_wsr,'seconds')
+    if alg == 'all except comp' or 'greedy_deep_det' in alg:
+        start_gdd = time.time()
+        gdd_answers = tree.greedy_deep_det(desired_size)
+        end_gdd = time.time()
+        print('Greedy deep deterministic answers:')
+        for answer in gdd_answers:
             print (answer)
             print('certain rels:',answer.get_certain_relationships_count())
             print('possible rels:',answer.get_expanded_possible_relationships_count())
-        time_cvd = end_cvd - start_cvd
-        if time_cvd > time_to_show:
-            print('CVD calculation took',time_cvd,'seconds')
+        time_gdd = end_gdd - start_gdd
+        if time_gdd > time_to_show:
+            print('Greedy deep deterministic calculation took',time_gdd,'seconds')
+    if alg == 'all except comp' or 'WSD' in alg:
+        start_wsd = time.time()
+        wsd_answers = tree.wide_shallow_det(desired_size)
+        end_wsd = time.time()
+        print('wsd answers:')
+        for answer in wsd_answers:
+            print (answer)
+            print('certain rels:',answer.get_certain_relationships_count())
+            print('possible rels:',answer.get_expanded_possible_relationships_count())
+        time_wsd = end_wsd - start_wsd
+        if time_wsd > time_to_show:
+            print('WSD calculation took',time_wsd,'seconds')
     if alg != 'all except comp' and 'comp' in alg:
         start_comp = time.time()
         comp_answers = tree.comprehensive_algorithm(desired_size)
@@ -335,14 +470,15 @@ domains = {'Col1':3, 'Col2':3, 'Col3':3, 'Col4':2}
 t1 = Table(test_columns, test_table, {'Col1':3, 'Col2':3, 'Col3':3})
 print(t1)
 find_answer(t1, 1)
-# find_answer(t1, 1, ['greedy_det','greedy_random'])
+# find_answer(t1, 1, ['greedy_det','greedy_deep_det'])
 
 
 print('-----------------------------------------------')
 print('test 2')
 t2 = Table(test_columns,  [['A','B','C'],['A','C','B']], domains)
 print(t2)
-find_answer(t2,1)
+# find_answer(t2,1)
+find_answer(t2,1,['greedy_det','greedy_deep_det']) 
 # find_answer(t2,1, 'all except comp')
 
 # TODO: ADD TO PAPER THIS EXAMPLE ON WHEN GREEDY DOESNT WORK
@@ -361,6 +497,7 @@ print(t3)
 start = time.time()
 # find_answer(t3,2, ['greedy_det','greedy_random'])
 find_answer(t3,2, 'all except comp')
+# find_answer(t3,2,['greedy_det','greedy_deep_det']) 
 # find_answer(t3,2)         # comp took 53,58, 67, 74, 120 sec to run
 
 end = time.time()
@@ -372,7 +509,8 @@ t3 = Table(test_columns+['Col4'],  [['A','B','C','A'],['A','C','B','A'],['C','B'
 print('original table:')
 print(t3)
 start = time.time()
-find_answer(t3,2,'all except comp')           # cvd 2 sec
+# find_answer(t3,2,['greedy_det','greedy_deep_det']) 
+find_answer(t3,2,'all except comp')           # wsd 2 sec
 
 end = time.time()
 print('total time elapsed for test 4:',str(end-start))
@@ -385,7 +523,7 @@ print('original table:')
 print(t3)
 start = time.time()
 find_answer(t3,2, 'all except comp')
-# find_answer(t3,2,['greedy_det','greedy_random'])        # CVD 30s
+# find_answer(t3,2,['greedy_det','greedy_deep_det'])        # WSD 30s
 
 end = time.time()
 print('total time elapsed for test 5:',str(end-start))
