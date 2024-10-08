@@ -338,53 +338,64 @@ class TableTree():
 
 def find_answer(table, desired_size, alg = ['comp','greedy_det','greedy_random','CVD','CVR'], time_to_show = 0):
     tree = TableTree(table)
-    if 'greedy_random' in alg:
+    print('alg is',alg)
+    if alg == 'all except comp' or 'greedy_random' in alg:
         start_greedy_random = time.time()
         greedy_random_answers = tree.greedy_algorithm_random(desired_size)
         end_greedy_random = time.time()
         print('greedy_random_answers:')
         for answer in greedy_random_answers:
             print(answer)
+            print('certain rels:',answer.get_certain_relationships_count())
+            print('possible rels:',answer.get_expanded_possible_relationships_count())
         time_greedy_random = end_greedy_random - start_greedy_random
         if time_greedy_random > time_to_show:
             print('Greedy random took',time_greedy_random,'seconds')
-    if 'greedy_det' in alg:
+    if alg == 'all except comp' or 'greedy_det' in alg:
         start_greedy_det = time.time()
         greedy_det_answers = tree.greedy_algorithm_deterministic(desired_size)
         end_greedy_det = time.time()
         print('greedy_det_answers:')
         for answer in greedy_det_answers:
             print(answer)
+            print('certain rels:',answer.get_certain_relationships_count())
+            print('possible rels:',answer.get_expanded_possible_relationships_count())
         time_greedy_det = end_greedy_det - start_greedy_det
         if time_greedy_det > time_to_show:
             print('Greedy deterministic took', time_greedy_det, 'seconds')
-    if 'CVR' in alg:
+    if alg == 'all except comp' or 'CVR' in alg:
         start_cvr = time.time()
         cvr_answers = tree.comp_up_to_valid_rand(desired_size)
         end_cvr = time.time()
         print('cvr answers:')
         for answer in cvr_answers:
             print (answer)
+            print('certain rels:',answer.get_certain_relationships_count())
+            print('possible rels:',answer.get_expanded_possible_relationships_count())
         time_cvr = end_cvr - start_cvr
         if time_cvr > time_to_show:
             print('CVR calculation took',time_cvr,'seconds')
-    if 'CVD' in alg:
+    if alg == 'all except comp' or 'CVD' in alg:
         start_cvd = time.time()
         cvd_answers = tree.comp_up_to_valid_det(desired_size)
         end_cvd = time.time()
         print('cvd answers:')
         for answer in cvd_answers:
             print (answer)
+            print('certain rels:',answer.get_certain_relationships_count())
+            print('possible rels:',answer.get_expanded_possible_relationships_count())
         time_cvd = end_cvd - start_cvd
         if time_cvd > time_to_show:
             print('CVD calculation took',time_cvd,'seconds')
-    if 'comp' in alg:
+    if alg != 'all except comp' and 'comp' in alg:
         start_comp = time.time()
         comp_answers = tree.comprehensive_algorithm(desired_size)
         end_comp = time.time()
         print('comprehensive answers:')
         for answer in comp_answers:
             print (answer)
+            print('certain rels:',answer.get_certain_relationships_count())
+            print('possible rels:',answer.get_expanded_possible_relationships_count())
         time_comp = end_comp - start_comp
         if time_comp > time_to_show:
             print('Comprehensive calculation took',time_comp,'seconds')
@@ -393,57 +404,51 @@ test_table = [['A','B','C'],['A','B','B']]
 test_columns = ['Col1','Col2','Col3']
 domains = {'Col1':3, 'Col2':3, 'Col3':2, 'Col4':2}
 
-# t1 = Table(test_columns, test_table, {'Col1':3, 'Col2':3, 'Col3':3})
-# print(t1)
-# find_answer(t1, 1)
-# # find_answer(t1, 1, ['greedy_det','greedy_random'])
+t1 = Table(test_columns, test_table, {'Col1':3, 'Col2':3, 'Col3':3})
+print(t1)
+find_answer(t1, 1)
+# find_answer(t1, 1, ['greedy_det','greedy_random'])
 
 
-# print('-----------------------------------------------')
-# print('test 2')
-# t2 = Table(test_columns,  [['A','B','C'],['A','C','B']], domains)
-# print(t2)
-# find_answer(t2,1)
+print('-----------------------------------------------')
+print('test 2')
+t2 = Table(test_columns,  [['A','B','C'],['A','C','B']], domains)
+print(t2)
+find_answer(t2,1)
 
 print('-----------------------------------------------')
 print('test 3')
-t3 = Table(test_columns,  [['A','B','C'],['A','C','B'],['C','B','A']], domains)         # comp took 53,58,74 sec to run
+t3 = Table(test_columns,  [['A','B','C'],['A','C','B'],['C','B','A']], domains)         # comp took 53,58, 67, 74 sec to run
 print('original table:')
 print(t3)
 start = time.time()
 # find_answer(t3,2, ['greedy_det','greedy_random'])
-find_answer(t3,2)
+find_answer(t3,2, 'all except comp')
+# find_answer(t3,2)
 
 end = time.time()
 print('total time elapsed for test 3:',str(end-start))
-'''
+
 print('-----------------------------------------------')
 print('test 4')
 t3 = Table(test_columns+['Col4'],  [['A','B','C','A'],['A','C','B','A'],['C','B','A','B']], domains)
 print('original table:')
 print(t3)
 start = time.time()
-find_answer(t3,2,['greedy_det','greedy_random'])
+find_answer(t3,2,'all except comp')
 
 end = time.time()
 print('total time elapsed for test 4:',str(end-start))
-'''
 
-# print('-----------------------------------------------')
-# print('test 5')
-# t3 = Table(test_columns,  [['A','B','C'],['A','C','B'],['C','B','A'],['A','C','C']], domains)      
-# print('original table:')
-# print(t3)
-# start = time.time()
-# find_answer(t3,2, ['comp'])
-# # find_answer(t3,2,['greedy_det','greedy_random'])        # 14 sec vs 0.1s for det vs rand
 
-# end = time.time()
-# print('total time elapsed for test 5:',str(end-start))
+print('-----------------------------------------------')
+print('test 5')
+t3 = Table(test_columns,  [['A','B','C'],['A','C','B'],['C','B','A'],['A','C','C']], domains)      
+print('original table:')
+print(t3)
+start = time.time()
+find_answer(t3,2, 'all except comp')
+# find_answer(t3,2,['greedy_det','greedy_random'])        # 14 sec vs 0.1s for det vs rand
 
-# test_t = Table(['Col1','Col2'],[['A','B'],['C','D']], domains)
-# ttn = TableTreeNode(test_t)
-# print(ttn.table)
-# ttn.add_layer()
-# for c in ttn.children:
-#     print(c)
+end = time.time()
+print('total time elapsed for test 5:',str(end-start))
