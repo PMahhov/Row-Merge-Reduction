@@ -181,6 +181,7 @@ class TableTree():
             for tree_node in to_check:
                 # print('checking:')
                 # print(tree_node.table)
+                # print(tree_node.get_certains(), tree_node.get_exp_possibles())
                 tree_node.add_layer()
                 current_bests = []
                 if len(tree_node.children) > 0:
@@ -198,6 +199,7 @@ class TableTree():
                             # possibles = tree_node.get_exp_possibles()
                             # print('child is')
                             # print(child.table)
+                            # print(child.get_certains(), child.get_exp_possibles())
                             certains = child.get_certains()
                             # print(child.table.certain_rels)
                             possibles = child.get_exp_possibles()
@@ -209,7 +211,7 @@ class TableTree():
                                 max_certains = certains
                                 min_possibles = possibles
                             elif max_certains == certains:
-                                if min_possibles < possibles:
+                                if min_possibles > possibles:
                                     current_bests = [child]
                                     min_possibles = possibles
                                 elif min_possibles == possibles:
@@ -242,7 +244,7 @@ class TableTree():
                 max_certains = certains
                 min_possibles = possibles       # certains override possibles (this is a matter of preference)
             elif max_certains == certains:
-                if min_possibles < possibles:
+                if min_possibles > possibles:
                     current_bests = [v.table]
                 elif min_possibles == possibles:
                     current_bests.append(v.table)
@@ -255,80 +257,6 @@ class TableTree():
 
         return unique_current_bests
 
-'''
-    def greedy_algorithm_random(self, desired_size: int):
-        
-        valids = set()
-        if self.root.get_size() <= desired_size:
-            return self.root.table
-
-        valid_answer_exists = False
-
-        new_to_check = [[self.root]]
-        while not valid_answer_exists:
-            to_check = random.choice(new_to_check)
-            new_to_check = []
-            for tree_node in to_check:
-                tree_node.add_layer()
-                current_bests = []
-                if len(tree_node.children) > 0:
-                    max_certains = 0
-                    for i, child in enumerate(tree_node.children):
-                        if child.get_size() <= desired_size:
-                            valid_answer_exists = True
-                            valids.add(child)
-                        elif valid_answer_exists:
-                            pass
-                        else:
-                            # certains = tree_node.get_certains()
-                            # possibles = tree_node.get_exp_possibles()
-                            certains = child.get_certains()
-                            possibles = child.get_exp_possibles()
-                            if i == 0:
-                                min_possibles = possibles
-                            if max_certains < certains:
-                                current_bests = [child]
-                                max_certains = certains
-                                min_possibles = possibles   # certains override possibles (this is a matter of preference)
-                            elif max_certains == certains:
-                                if min_possibles < possibles:
-                                    current_bests = [child]
-                                    min_possibles = possibles
-                                elif min_possibles == possibles:
-                                    current_bests.append(child)
-                new_to_check.append(current_bests)
-
-        if len(valids) == 1:
-            for v in valids:
-                return [v.table]
-
-        # compare all valid solutions
-
-        max_certains = 0
-        current_bests = []
-        for i, v in enumerate(valids):
-            certains = v.get_certains()
-            possibles = v.get_exp_possibles()
-            if i == 0:
-                min_possibles = possibles
-            if max_certains < certains:
-                current_bests = [v.table]
-                max_certains = certains
-                min_possibles = possibles
-            elif max_certains == certains:
-                if min_possibles < possibles:
-                    current_bests = [v.table]
-                elif min_possibles == possibles:
-                    current_bests.append(v.table)
-
-        # remove duplicates
-        unique_current_bests = []
-        for current_table in current_bests:
-            if not any(existing_table.is_same(current_table) for existing_table in unique_current_bests):
-                unique_current_bests.append(current_table)
-
-        return unique_current_bests
-'''
 # t1 = Table(test_columns, test_table, domains)
 # tr1 = TableTree(t1)
 # answers = tr1.comprehensive_algorithm(1)
@@ -402,7 +330,7 @@ def find_answer(table, desired_size, alg = ['comp','greedy_det','greedy_random',
 
 test_table = [['A','B','C'],['A','B','B']]
 test_columns = ['Col1','Col2','Col3']
-domains = {'Col1':3, 'Col2':3, 'Col3':2, 'Col4':2}
+domains = {'Col1':3, 'Col2':3, 'Col3':3, 'Col4':2}
 
 t1 = Table(test_columns, test_table, {'Col1':3, 'Col2':3, 'Col3':3})
 print(t1)
@@ -415,16 +343,25 @@ print('test 2')
 t2 = Table(test_columns,  [['A','B','C'],['A','C','B']], domains)
 print(t2)
 find_answer(t2,1)
+# find_answer(t2,1, 'all except comp')
+
+# TODO: ADD TO PAPER THIS EXAMPLE ON WHEN GREEDY DOESNT WORK
+# AT ABC, A**, greedy always chooses to remove last A in second column because it doesnt
+# reduce certain rels, but then *** is the only option
+# a better solution would be to do A**, A**
+
+
+
 
 print('-----------------------------------------------')
 print('test 3')
-t3 = Table(test_columns,  [['A','B','C'],['A','C','B'],['C','B','A']], domains)         # comp took 53,58, 67, 74 sec to run
+t3 = Table(test_columns,  [['A','B','C'],['A','C','B'],['C','B','A']], domains)     
 print('original table:')
 print(t3)
 start = time.time()
 # find_answer(t3,2, ['greedy_det','greedy_random'])
 find_answer(t3,2, 'all except comp')
-# find_answer(t3,2)
+# find_answer(t3,2)         # comp took 53,58, 67, 74, 120 sec to run
 
 end = time.time()
 print('total time elapsed for test 3:',str(end-start))
@@ -435,7 +372,7 @@ t3 = Table(test_columns+['Col4'],  [['A','B','C','A'],['A','C','B','A'],['C','B'
 print('original table:')
 print(t3)
 start = time.time()
-find_answer(t3,2,'all except comp')
+find_answer(t3,2,'all except comp')           # cvd 2 sec
 
 end = time.time()
 print('total time elapsed for test 4:',str(end-start))
@@ -448,7 +385,8 @@ print('original table:')
 print(t3)
 start = time.time()
 find_answer(t3,2, 'all except comp')
-# find_answer(t3,2,['greedy_det','greedy_random'])        # 14 sec vs 0.1s for det vs rand
+# find_answer(t3,2,['greedy_det','greedy_random'])        # CVD 30s
 
 end = time.time()
 print('total time elapsed for test 5:',str(end-start))
+
