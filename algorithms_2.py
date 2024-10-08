@@ -93,6 +93,8 @@ class TableTree():
         valid_tables.update(self.root.check_children_thoroughly(desired_size, valid_tables))
 
         # choose the right table --> max certain, min possible rels
+
+        # remove duplicates
         valid_tables = list(valid_tables)
         unique_valid_tables = []
         for current_table in valid_tables:
@@ -147,12 +149,15 @@ don't stop even if a valid answer has been found in the latest layer
 
 
 algorithms:
-comp - wide, deep, deterministic
+comp/wdd - wide, deep, deterministic
 wsd - wide, shallow, deterministic
 wsr - wide, shallow, random
 greedy_deep_det - greedy, deep, deterministic
 greedy_det - greedy, shallow, deterministic
 greedy random - greedy, shallow, random
+
+wdr - wide, deep, random
+greedy_deep_rand
 '''
 
     def greedy_algorithm_deterministic(self, desired_size: int):      # we pursue all equally best layers instead of choosing random
@@ -290,6 +295,12 @@ greedy random - greedy, shallow, random
     def greedy_deep_rand(self, desired_size: int):
         return self.deep_algorithm(desired_size, deterministic=False, greedy=True)
 
+    def wide_deep_det(self, desired_size: int):
+        return self.deep_algorithm(desired_size, deterministic = True, greedy=False)
+
+    def wide_deep_rand(self, desired_size: int):
+        return self.deep_algorithm(desired_size, deterministic=False, greedy=False)
+
 # TODO: greedy algorithm that checks next layer even if current layer has valid answer
     def deep_algorithm(self, desired_size: int, deterministic = True, greedy = True):      # we pursue all equally best layers instead of choosing random
         # reset children
@@ -299,7 +310,6 @@ greedy random - greedy, shallow, random
         if self.root.get_size() <= desired_size:
             return [self.root.table]
 
-        # valid_answer_exists = False
         if deterministic:
             new_to_check = [self.root]
         else:
@@ -320,10 +330,9 @@ greedy random - greedy, shallow, random
                     max_certains = 0
                     for i, child in enumerate(tree_node.children):
                         if child.get_size() <= desired_size:
-                            # valid_answer_exists = True
                             valids.add(child)
-                        # elif valid_answer_exists:
-                        #     pass
+                        elif not greedy:
+                            current_bests.append(child)
                         else:
                             # certains = tree_node.get_certains()
                             # possibles = tree_node.get_exp_possibles()
@@ -387,7 +396,7 @@ greedy random - greedy, shallow, random
 
         return unique_current_bests
 
-def find_answer(table, desired_size, alg = ['comp','greedy_det','greedy_random','WSD','WSR', 'greedy_deep_det'], time_to_show = 0):
+def find_answer(table, desired_size, alg = ['comp','greedy_det','greedy_random','WSD','WSR', 'WDR', 'greedy_deep_rand', 'greedy_deep_det'], time_to_show = 0):
     tree = TableTree(table)
     print('alg is',alg)
     if alg == 'all except comp' or 'greedy_random' in alg:
@@ -438,18 +447,42 @@ def find_answer(table, desired_size, alg = ['comp','greedy_det','greedy_random',
         time_gdd = end_gdd - start_gdd
         if time_gdd > time_to_show:
             print('Greedy deep deterministic calculation took',time_gdd,'seconds')
+    if alg == 'all except comp' or 'greedy_deep_rand' in alg:
+        start_gdr = time.time()
+        gdr_answers = tree.greedy_deep_det(desired_size)
+        end_gdr = time.time()
+        print('Greedy deep random answers:')
+        for answer in gdr_answers:
+            print (answer)
+            print('certain rels:',answer.get_certain_relationships_count())
+            print('possible rels:',answer.get_expanded_possible_relationships_count())
+        time_gdr = end_gdr - start_gdr
+        if time_gdr > time_to_show:
+            print('Greedy deep random calculation took',time_gdr,'seconds')
     if alg == 'all except comp' or 'WSD' in alg:
         start_wsd = time.time()
         wsd_answers = tree.wide_shallow_det(desired_size)
         end_wsd = time.time()
-        print('wsd answers:')
+        print('WSD answers:')
         for answer in wsd_answers:
             print (answer)
             print('certain rels:',answer.get_certain_relationships_count())
             print('possible rels:',answer.get_expanded_possible_relationships_count())
         time_wsd = end_wsd - start_wsd
         if time_wsd > time_to_show:
-            print('WSD calculation took',time_wsd,'seconds')
+            print('Wide shallow det calculation took',time_wsd,'seconds')
+    if alg == 'all except comp' or 'WDR' in alg:
+        start_wdr = time.time()
+        wdr_answers = tree.wide_shallow_det(desired_size)
+        end_wdr = time.time()
+        print('WDR answers:')
+        for answer in wdr_answers:
+            print (answer)
+            print('certain rels:',answer.get_certain_relationships_count())
+            print('possible rels:',answer.get_expanded_possible_relationships_count())
+        time_wdr = end_wdr - start_wdr
+        if time_wdr > time_to_show:
+            print('Wide deep random calculation took',time_wdr,'seconds')
     if alg != 'all except comp' and 'comp' in alg:
         start_comp = time.time()
         comp_answers = tree.comprehensive_algorithm(desired_size)
@@ -462,6 +495,19 @@ def find_answer(table, desired_size, alg = ['comp','greedy_det','greedy_random',
         time_comp = end_comp - start_comp
         if time_comp > time_to_show:
             print('Comprehensive calculation took',time_comp,'seconds')
+    if alg != 'all except comp' and 'WDD' in alg:
+    # if True:
+        start_comp = time.time()
+        comp_answers = tree.wide_deep_det(desired_size)
+        end_comp = time.time()
+        print('wdd (comp) answers:')
+        for answer in comp_answers:
+            print (answer)
+            print('certain rels:',answer.get_certain_relationships_count())
+            print('possible rels:',answer.get_expanded_possible_relationships_count())
+        time_comp = end_comp - start_comp
+        if time_comp > time_to_show:
+            print('WDD Comprehensive calculation took',time_comp,'seconds')
 
 test_table = [['A','B','C'],['A','B','B']]
 test_columns = ['Col1','Col2','Col3']
@@ -477,8 +523,8 @@ print('-----------------------------------------------')
 print('test 2')
 t2 = Table(test_columns,  [['A','B','C'],['A','C','B']], domains)
 print(t2)
-# find_answer(t2,1)
-find_answer(t2,1,['greedy_det','greedy_deep_det']) 
+find_answer(t2,1)
+# find_answer(t2,1,['greedy_det','greedy_deep_det']) 
 # find_answer(t2,1, 'all except comp')
 
 # TODO: ADD TO PAPER THIS EXAMPLE ON WHEN GREEDY DOESNT WORK
@@ -497,6 +543,7 @@ print(t3)
 start = time.time()
 # find_answer(t3,2, ['greedy_det','greedy_random'])
 find_answer(t3,2, 'all except comp')
+# find_answer(t3,2, ['WDD','comp'])
 # find_answer(t3,2,['greedy_det','greedy_deep_det']) 
 # find_answer(t3,2)         # comp took 53,58, 67, 74, 120 sec to run
 
