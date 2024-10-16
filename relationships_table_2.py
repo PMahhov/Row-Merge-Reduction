@@ -8,6 +8,9 @@ printing_mode = False
 short_printing = False
 testing = False
 
+
+# TODO: add default domain cardinality of a column to be cardinality of set of unique values in that column
+
 class Row(Node):
     '''
     - id: id
@@ -67,27 +70,43 @@ class Table:
     - rows: list of row objects
     # - rows_dict: dict of id:row
     - columns: list of column names
-    - domains: dict of column_label:domain size
+    - domains_cardinality: dict of column_label:domain size
     - relationships: set of all relationships
     - certain_rels: set of certain relationships
     - possible_rels: set of possible relationships
     - origin: 'lists', 'row objects', 'json'?? [TODO]
     '''
-    def __init__(self, columns:list, initial_list: list, domains: dict, origin = 'lists'):
+    def __init__(self, columns:list, initial_list: list, domains_cardinality = None, origin = 'lists'):
         self.rows = []
         if origin == 'lists':
             self.columns = columns
-            self.domains = domains
             # self.rows_dict = {}
             for i, initial_row in enumerate(initial_list):
                 self.create_row(initial_row, i)
         elif origin == 'row objects':
             self.columns = columns
-            self.domains = domains
             for row_object in initial_list:
                 self.rows.append(row_object)
         else:
             raise ValueError ('Unimplemented table origin format')
+
+        if domains_cardinality != None:
+            self.domains_cardinality = domains_cardinality
+        else:
+            if origin in ['lists']:
+                self.domains_cardinality = {}
+                unique_values = {}
+                for i, column, in enumerate(self.columns):
+                    unique_values[column] = set()
+                    self.domains_cardinality[column] = 0
+                    for row in initial_list:
+                        if row[i] not in unique_values[column]:
+                            unique_values[column].add(row[i])
+                            self.domains_cardinality[column] += 1
+            else:
+                raise ValueError ('Unimplemented domain cardinality acquisition for table origin format '+str(origin))
+
+                
 
 
         self.update_all_relationships()
@@ -213,7 +232,7 @@ class Table:
                                 ((pos_col1,pos_val1),(pos_col2,pos_val2)) = possible_rel_2
                                 if pos_col1 == col1 and pos_col2 == col2 and pos_val2 == '*':
                                     if pos_val2 not in unknowns[current_set][col2]:
-                                        unknowns[current_set][col2][val2] = set()               # here the other row's '*' stands for whatever is in the original row beside its '*'
+                                        unknowns[current_set][col2][val2] = set()             
                                     unknowns[current_set][col2][val2].add(pos_val1)
                                     # print('adding', pos_val1, 'other is', pos_val2)
                                     if double_counting == True:
@@ -261,7 +280,7 @@ class Table:
                                 ((pos_col1,pos_val1),(pos_col2,pos_val2)) = possible_rel_2
                                 if pos_col1 == col1 and pos_col2 == col2 and pos_val1 == '*':
                                     if pos_val1 not in unknowns[current_set][col1]:
-                                        unknowns[current_set][col1][val1] = set()               # here the other row's '*' stands for whatever is in the original row beside its '*'
+                                        unknowns[current_set][col1][val1] = set()            
                                     unknowns[current_set][col1][val1].add(pos_val2)
                                     # print('adding', pos_val2, 'other is', pos_val1)
                                     if double_counting == True:
@@ -281,7 +300,7 @@ class Table:
                                     else:
                                         double_counting = True
                                     
-        # go through the entirety of the wrongs dict and get the dom - wrongs values or self.domains[col1] * self.domains[col2] if both full
+        # go through the entirety of the wrongs dict and get the dom - wrongs values or self.domains_cardinality[col1] * self.domains_cardinality[col2] if both full
         if printing:
             print('unknowns final:',unknowns)
         
@@ -293,28 +312,28 @@ class Table:
                 print('current_dict',current_dict)
                 print('col 1 and col2', col1, col2)
             if current_dict[col1] == 'full' and current_dict[col2] == 'full':
-                expanded_possible_rel_count += self.domains[col1] * self.domains[col2]
+                expanded_possible_rel_count += self.domains_cardinality[col1] * self.domains_cardinality[col2]
             else:
                 own_vals = 0
                 for key in current_dict[col1].keys():
                     own_vals += len(current_dict[col1][key])
-                expanded_possible_rel_count += self.domains[col2] * len(current_dict[col1].keys()) - own_vals
+                expanded_possible_rel_count += self.domains_cardinality[col2] * len(current_dict[col1].keys()) - own_vals
                 if printing:
-                    print('self.domains[col2]',self.domains[col2])
+                    print('self.domains_cardinality[col2]',self.domains_cardinality[col2])
                     print('current_dict[col1]',current_dict[col1])
                     print('length:',len(current_dict[col1].keys()))
                     print('own vals:', own_vals)
-                    print(self.domains[col2] * len(current_dict[col1].keys()) - own_vals)
+                    print(self.domains_cardinality[col2] * len(current_dict[col1].keys()) - own_vals)
                 own_vals = 0
                 for key in current_dict[col2].keys():
                     own_vals += len(current_dict[col2][key])
-                expanded_possible_rel_count += self.domains[col1] * len(current_dict[col2].keys()) - own_vals
+                expanded_possible_rel_count += self.domains_cardinality[col1] * len(current_dict[col2].keys()) - own_vals
                 if printing:
-                    print('self.domains[col1]',self.domains[col1])
+                    print('self.domains_cardinality[col1]',self.domains_cardinality[col1])
                     print('current_dict[col2]',current_dict[col2])
                     print('length:',len(current_dict[col2].keys()))
                     print('own vals:', own_vals)
-                    print(self.domains[col1] * len(current_dict[col2].keys()) - own_vals)
+                    print(self.domains_cardinality[col1] * len(current_dict[col2].keys()) - own_vals)
         # if printing:
         # print('final exp rel count', expanded_possible_rel_count, 'with compensation of', double_counting_compensation, 'and adjustment of', double_star_adjustment)
         return expanded_possible_rel_count
@@ -403,7 +422,7 @@ def perform_nulling(table, nulls, get_copy = False, short_printing = True, long_
     if long_printing:
         print(table.possible_rels)
     if short_printing:
-        print('Domains:',domains)
+        print('domains_cardinality:',table.domains_cardinality)
         print('Count of expanded possible relationships:', table.get_expanded_possible_relationships_count())
     return table
 
@@ -413,14 +432,14 @@ testing = False
 
 test_table = [['A','B','C'],['A','B','B']]
 test_columns = ['Col1','Col2','Col3']
-domains = {'Col1':3, 'Col2':3, 'Col3':2}
+domains_cardinality = {'Col1':3, 'Col2':3, 'Col3':2}
 
 if testing:
     if short_printing:
         print('TABLE 1')
 
 
-    # t1 = Table(columns=test_columns, initial_table=test_table, domains=domains)
+    # t1 = Table(columns=test_columns, initial_table=test_table, domains_cardinality=domains_cardinality)
     # print(t1)
     # # print(t1.get_relationships())
     # t1.make_null(0,'Col3')
@@ -433,7 +452,7 @@ if testing:
     # print(t1.get_expanded_possible_relationships_count())
 
 
-    t1 = Table(test_columns, test_table, domains)
+    t1 = Table(test_columns, test_table, domains_cardinality)
     t1 = perform_nulling(t1, [(0, 'Col2')], short_printing=short_printing)
     # print(t1)
     # print('exp rels count:',t1.get_expanded_possible_relationships_count())
@@ -445,7 +464,7 @@ if testing:
         print('------------------------------------------')
         print('TABLE 2')
 
-    t2 = Table(test_columns, test_table, domains)
+    t2 = Table(test_columns, test_table, domains_cardinality)
     t2 = perform_nulling(t2, [(0,'Col3'),(1,'Col3')], short_printing=short_printing)
     assert(t2.get_expanded_possible_relationships_count()==4)
 
@@ -453,7 +472,7 @@ if testing:
         print('------------------------------------------')
         print('TABLE 3')
 
-    t3 = Table(['Col2','Col3'], [['A','A'],['B','B']], domains)
+    t3 = Table(['Col2','Col3'], [['A','A'],['B','B']], domains_cardinality)
     t3 = perform_nulling(t3, [(0,'Col2'),(1,'Col3')], short_printing=short_printing)
     assert(t3.get_expanded_possible_relationships_count() == 4)
 
@@ -461,7 +480,7 @@ if testing:
     if short_printing:
         print('------------------------------------------')
         print('TABLE 4')
-    t4 = Table(['Col2','Col3'], [['A','A'],['B','B']], domains)
+    t4 = Table(['Col2','Col3'], [['A','A'],['B','B']], domains_cardinality)
     t4 = perform_nulling(t4, [(0,'Col2'),(1,'Col3'),(0,'Col3'),(1,'Col2')], short_printing=short_printing)
     assert(t4.get_expanded_possible_relationships_count() == 6)
 
@@ -469,7 +488,7 @@ if testing:
     if short_printing:
         print('------------------------------------------')
         print('TABLE 5')
-    t5 = Table(test_columns, test_table, domains)
+    t5 = Table(test_columns, test_table, domains_cardinality)
     t5 = perform_nulling(t5, [(0,'Col3'),(0,'Col1'),(0,'Col2')], short_printing=short_printing)
     assert(t5.get_expanded_possible_relationships_count() == 21)
 
@@ -477,7 +496,7 @@ if testing:
     if short_printing:
         print('------------------------------------------')
         print('TABLE 6')
-    t6 = Table(test_columns, test_table, domains)
+    t6 = Table(test_columns, test_table, domains_cardinality)
     t6 = perform_nulling(t6, [(0,'Col3'),(0,'Col1'),(0,'Col2'),(1,'Col1'),(1,'Col2'),(1,'Col3')], short_printing=short_printing)
     assert(t6.get_expanded_possible_relationships_count() == 21)
 
@@ -485,7 +504,7 @@ if testing:
     if short_printing:
         print('------------------------------------------')
         print('TABLE 7')
-    t7 = Table(test_columns, test_table, domains)
+    t7 = Table(test_columns, test_table, domains_cardinality)
     t7 = perform_nulling(t7, [(0,'Col3'),(0,'Col2'),(1,'Col2'),(1,'Col3')], short_printing=short_printing)
     assert(t7.get_expanded_possible_relationships_count() == 11)
 
@@ -493,7 +512,7 @@ if testing:
     if short_printing:
         print('------------------------------------------')
         print('TABLE 8')
-    t8 = Table(test_columns, test_table, domains)
+    t8 = Table(test_columns, test_table, domains_cardinality)
     print(t8)
     t8 = perform_nulling(t8, [(0,'Col3')], short_printing=short_printing)
     printing_mode = True
@@ -505,7 +524,7 @@ if testing:
     if short_printing:
         print('------------------------------------------')
         print('TABLE 9')
-    t9 = Table(test_columns, [['C','B','A'],['A','*','*']], domains)
+    t9 = Table(test_columns, [['C','B','A'],['A','*','*']], domains_cardinality)
     print(t9)
     print(t9.get_expanded_possible_relationships_count())
     assert(t9.get_expanded_possible_relationships_count() == 10)
@@ -514,15 +533,23 @@ if testing:
     if short_printing:
         print('------------------------------------------')
         print('TABLE 10')
-    t10 = Table(test_columns, [['A','C','B'],['*','B','*']], domains)
+    t10 = Table(test_columns, [['A','C','B'],['*','B','*']], domains_cardinality)
     print(t10)
     print(t10.get_expanded_possible_relationships_count())
     assert(t10.get_expanded_possible_relationships_count() == 10)
 
 
-# t11 = Table(test_columns, [['A','B','C'],['A','C','B'],['C','B','A']], domains)
+# t11 = Table(test_columns, [['A','B','C'],['A','C','B'],['C','B','A']], domains_cardinality)
 # print(t11)
 # t11 = perform_nulling(t11, [(0,'Col1'),(0,'Col3'),(2,'Col1'),(2,'Col3')])
 # print(t11)
 # print(t11.get_expanded_possible_relationships_count())
 # print(t11.get_certain_relationships_count())
+
+# t12 = Table(test_columns, [['A','B','C'],['B','C','A'],['C','A','B']])
+# print(t12)
+# print(t12.domains_cardinality)
+# t12 = perform_nulling(t12, [(0,'Col1'),(0,'Col3'),(2,'Col1'),(2,'Col3')])
+# print(t12)
+# print(t12.get_expanded_possible_relationships_count())
+# print(t12.get_certain_relationships_count())

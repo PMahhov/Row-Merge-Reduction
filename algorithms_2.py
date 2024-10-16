@@ -42,7 +42,7 @@ class TableTreeNode():
                 # new_rows = copy.copy(self.table.rows)
                 # new_table = Table(columns = self.table.columns, initial=self.table.rows)
                     # new_table = copy.deepcopy(self.table)       # for 3x3,  2 minutes down from 40
-                    new_table = Table(columns = self.table.columns, initial_list=self.table.rows, domains=self.table.domains, origin ='row objects')    # 1 min for 3x3
+                    new_table = Table(columns = self.table.columns, initial_list=self.table.rows, domains_cardinality=self.table.domains_cardinality, origin ='row objects')    # 1 min for 3x3
                     new_table.make_null_copying_row(current_row, current_column)
                     new_nullings = copy.deepcopy(self.nullings)
                     new_nullings.append((current_row.get_id(), current_column))
@@ -511,7 +511,7 @@ def find_answer(table, desired_size, alg = ['comp','greedy_det','greedy_random',
 
 test_table = [['A','B','C'],['A','B','B']]
 test_columns = ['Col1','Col2','Col3']
-domains = {'Col1':3, 'Col2':3, 'Col3':3, 'Col4':2}
+domains_cardinality = {'Col1':3, 'Col2':3, 'Col3':3, 'Col4':2}
 
 t1 = Table(test_columns, test_table, {'Col1':3, 'Col2':3, 'Col3':3})
 print(t1)
@@ -521,7 +521,7 @@ find_answer(t1, 1)
 
 print('-----------------------------------------------')
 print('test 2')
-t2 = Table(test_columns,  [['A','B','C'],['A','C','B']], domains)
+t2 = Table(test_columns,  [['A','B','C'],['A','C','B']], domains_cardinality)
 print(t2)
 find_answer(t2,1)
 # find_answer(t2,1,['greedy_det','greedy_deep_det']) 
@@ -537,7 +537,7 @@ find_answer(t2,1)
 
 print('-----------------------------------------------')
 print('test 3')
-t3 = Table(test_columns,  [['A','B','C'],['A','C','B'],['C','B','A']], domains)     
+t3 = Table(test_columns,  [['A','B','C'],['A','C','B'],['C','B','A']], domains_cardinality)     
 print('original table:')
 print(t3)
 start = time.time()
@@ -552,7 +552,7 @@ print('total time elapsed for test 3:',str(end-start))
 
 print('-----------------------------------------------')
 print('test 4')
-t3 = Table(test_columns+['Col4'],  [['A','B','C','A'],['A','C','B','A'],['C','B','A','B']], domains)
+t3 = Table(test_columns+['Col4'],  [['A','B','C','A'],['A','C','B','A'],['C','B','A','B']], domains_cardinality)
 print('original table:')
 print(t3)
 start = time.time()
@@ -565,7 +565,7 @@ print('total time elapsed for test 4:',str(end-start))
 
 print('-----------------------------------------------')
 print('test 5')
-t3 = Table(test_columns,  [['A','B','C'],['A','C','B'],['C','B','A'],['A','C','C']], domains)      
+t3 = Table(test_columns,  [['A','B','C'],['A','C','B'],['C','B','A'],['A','C','C']], domains_cardinality)      
 print('original table:')
 print(t3)
 start = time.time()
