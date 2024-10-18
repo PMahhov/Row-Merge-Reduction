@@ -77,6 +77,102 @@ class TableTree():
     def __init__(self, table):
         self.root = TableTreeNode(table)
 
+    def sorted_nodes_algorithm(self, desired_size: int, nth = None):
+        # reset children:
+        self.root.children = []
+
+        valids = set()
+        max_certains = 0
+        min_possibles = None
+
+        n_count = 0
+
+        if self.root.get_size() <= desired_size:
+            return [self.root.table]
+
+        current_node = self.root
+        rev_sorted_nodes = []
+
+        end_loop = False
+        while not end_loop:
+            # print(current_node)
+            current_node.add_layer()        # creates all children of node
+            if len(current_node.children) > 0:
+                for child in current_node.children:
+
+                    node_score = (child, child.get_certains(), child.get_exp_possibles())
+                    if child.get_size() <= desired_size:
+                        # print('valid found', n_count)
+                        # print(child)
+                        if min_possibles == None:
+                                min_possibles = node_score[2]
+                        if node_score[1] > max_certains:
+                            valids = {child.table}
+                            max_certains = node_score[1]
+                            min_possibles = node_score[2]
+                            n_count += 1
+                        elif node_score[1] == max_certains:
+                            if node_score[2] < min_possibles:
+                                valids = {child.table}
+                                min_possibles = node_score[2]
+                                n_count += 1
+                            elif node_score[2] == min_possibles:
+                                valids.add(child.table)
+                        if n_count == nth:
+                            end_loop = True
+                            break
+                    else:       # if child is not valid, add to list to keep searching
+                        rev_sorted_nodes.append(node_score)
+            
+
+                if len(rev_sorted_nodes) > 0:
+                # sort the list of nodes in reverse (sorting works in descending order)
+                    # it is faster to pop the last than the first item in a list
+                #        (score 2 gets a minus sign, as it is a non-negative value that needs to be minimized
+                    rev_sorted_nodes = sorted(rev_sorted_nodes, key=lambda score: (score[1], -score[2]))   
+                    # print('rev sorted_nodes')
+                    # print(rev_sorted_nodes)
+                # take best node
+                    current_node = rev_sorted_nodes.pop(-1)[0]
+
+                    
+# only continue looping if the score of the best sorted is better than the current valid score
+                    if len(valids) > 0:       
+                        next_certains = current_node.get_certains() 
+                        next_possibles = current_node.get_exp_possibles()
+                        # print(next_certains, next_possibles, 'vs', max_certains, min_possibles)
+                        if next_certains < max_certains:
+                            end_loop = True
+                            break
+                        elif next_certains == max_certains:
+                            if next_possibles >= min_possibles: # this could be == if it is important to not lose potential identical-scoring answers
+                                end_loop = True
+                                break
+
+                else:
+                    end_loop = True
+                    break
+
+                if end_loop:
+                    break
+
+            else:                       
+                if len(valids) > 0:
+                    end_loop = True
+                    break
+                else:
+                    raise ValueError('No valid answer found') # should never happen if desired_size>0, *** is always valid
+
+        # remove duplicates
+        print('final n_count:',n_count)
+        unique_current_bests = []
+        for current_table in valids:
+            if not any(existing_table.is_same(current_table) for existing_table in unique_current_bests):
+                unique_current_bests.append(current_table)
+        return unique_current_bests
+
+
+    # DFS comprehensive
     def comprehensive_algorithm(self, desired_size: int, printing = False):
         # reset children:   
                # TODO: even if there might be benefits from running multiple algorithms at once, that's not the point of the study
@@ -396,18 +492,19 @@ greedy_deep_rand
 
         return unique_current_bests
 
-def find_answer(table, desired_size, alg = ['comp','greedy_det','greedy_random','WSD','WSR', 'WDR', 'greedy_deep_rand', 'greedy_deep_det'], time_to_show = 0):
+def find_answer(table, desired_size, alg = ['comp','greedy_det','greedy_random','WSD','WSR', 'WDR', 'greedy_deep_rand', 'greedy_deep_det','sorted_nodes' ], nth_list = [1], time_to_show = 0, show_answers = True):
     tree = TableTree(table)
     print('alg is',alg)
     if alg == 'all except comp' or 'greedy_random' in alg:
         start_greedy_random = time.time()
         greedy_random_answers = tree.greedy_algorithm_random(desired_size)
         end_greedy_random = time.time()
-        print('greedy_random_answers:')
-        for answer in greedy_random_answers:
-            print(answer)
-            print('certain rels:',answer.get_certain_relationships_count())
-            print('possible rels:',answer.get_expanded_possible_relationships_count())
+        if show_answers:
+            print('greedy_random_answers:')
+            for answer in greedy_random_answers:
+                print(answer)
+                print('certain rels:',answer.get_certain_relationships_count())
+                print('possible rels:',answer.get_expanded_possible_relationships_count())
         time_greedy_random = end_greedy_random - start_greedy_random
         if time_greedy_random > time_to_show:
             print('Greedy random took',time_greedy_random,'seconds')
@@ -415,11 +512,12 @@ def find_answer(table, desired_size, alg = ['comp','greedy_det','greedy_random',
         start_greedy_det = time.time()
         greedy_det_answers = tree.greedy_algorithm_deterministic(desired_size)
         end_greedy_det = time.time()
-        print('greedy_det_answers:')
-        for answer in greedy_det_answers:
-            print(answer)
-            print('certain rels:',answer.get_certain_relationships_count())
-            print('possible rels:',answer.get_expanded_possible_relationships_count())
+        if show_answers:
+            print('greedy_det_answers:')
+            for answer in greedy_det_answers:
+                print(answer)
+                print('certain rels:',answer.get_certain_relationships_count())
+                print('possible rels:',answer.get_expanded_possible_relationships_count())
         time_greedy_det = end_greedy_det - start_greedy_det
         if time_greedy_det > time_to_show:
             print('Greedy deterministic took', time_greedy_det, 'seconds')
@@ -427,11 +525,12 @@ def find_answer(table, desired_size, alg = ['comp','greedy_det','greedy_random',
         start_wsr = time.time()
         wsr_answers = tree.wide_shallow_rand(desired_size)
         end_wsr = time.time()
-        print('WSR answers:')
-        for answer in wsr_answers:
-            print (answer)
-            print('certain rels:',answer.get_certain_relationships_count())
-            print('possible rels:',answer.get_expanded_possible_relationships_count())
+        if show_answers:
+            print('WSR answers:')
+            for answer in wsr_answers:
+                print (answer)
+                print('certain rels:',answer.get_certain_relationships_count())
+                print('possible rels:',answer.get_expanded_possible_relationships_count())
         time_wsr = end_wsr - start_wsr
         if time_wsr > time_to_show:
             print('Wide shallow random calculation took',time_wsr,'seconds')
@@ -439,11 +538,12 @@ def find_answer(table, desired_size, alg = ['comp','greedy_det','greedy_random',
         start_gdd = time.time()
         gdd_answers = tree.greedy_deep_det(desired_size)
         end_gdd = time.time()
-        print('Greedy deep deterministic answers:')
-        for answer in gdd_answers:
-            print (answer)
-            print('certain rels:',answer.get_certain_relationships_count())
-            print('possible rels:',answer.get_expanded_possible_relationships_count())
+        if show_answers:
+            print('Greedy deep deterministic answers:')
+            for answer in gdd_answers:
+                print (answer)
+                print('certain rels:',answer.get_certain_relationships_count())
+                print('possible rels:',answer.get_expanded_possible_relationships_count())
         time_gdd = end_gdd - start_gdd
         if time_gdd > time_to_show:
             print('Greedy deep deterministic calculation took',time_gdd,'seconds')
@@ -451,11 +551,13 @@ def find_answer(table, desired_size, alg = ['comp','greedy_det','greedy_random',
         start_gdr = time.time()
         gdr_answers = tree.greedy_deep_det(desired_size)
         end_gdr = time.time()
-        print('Greedy deep random answers:')
-        for answer in gdr_answers:
-            print (answer)
-            print('certain rels:',answer.get_certain_relationships_count())
-            print('possible rels:',answer.get_expanded_possible_relationships_count())
+        if show_answers:
+            print('Greedy deep random answers:')
+            for answer in gdr_answers:
+                print (answer)
+                print('certain rels:',answer.get_certain_relationships_count())
+                # print('test part 1')
+                print('possible rels:',answer.get_expanded_possible_relationships_count())
         time_gdr = end_gdr - start_gdr
         if time_gdr > time_to_show:
             print('Greedy deep random calculation took',time_gdr,'seconds')
@@ -463,11 +565,12 @@ def find_answer(table, desired_size, alg = ['comp','greedy_det','greedy_random',
         start_wsd = time.time()
         wsd_answers = tree.wide_shallow_det(desired_size)
         end_wsd = time.time()
-        print('WSD answers:')
-        for answer in wsd_answers:
-            print (answer)
-            print('certain rels:',answer.get_certain_relationships_count())
-            print('possible rels:',answer.get_expanded_possible_relationships_count())
+        if show_answers:
+            print('WSD answers:')
+            for answer in wsd_answers:
+                print (answer)
+                print('certain rels:',answer.get_certain_relationships_count())
+                print('possible rels:',answer.get_expanded_possible_relationships_count())
         time_wsd = end_wsd - start_wsd
         if time_wsd > time_to_show:
             print('Wide shallow det calculation took',time_wsd,'seconds')
@@ -475,11 +578,12 @@ def find_answer(table, desired_size, alg = ['comp','greedy_det','greedy_random',
         start_wdr = time.time()
         wdr_answers = tree.wide_shallow_det(desired_size)
         end_wdr = time.time()
-        print('WDR answers:')
-        for answer in wdr_answers:
-            print (answer)
-            print('certain rels:',answer.get_certain_relationships_count())
-            print('possible rels:',answer.get_expanded_possible_relationships_count())
+        if show_answers:
+            print('WDR answers:')
+            for answer in wdr_answers:
+                print (answer)
+                print('certain rels:',answer.get_certain_relationships_count())
+                print('possible rels:',answer.get_expanded_possible_relationships_count())
         time_wdr = end_wdr - start_wdr
         if time_wdr > time_to_show:
             print('Wide deep random calculation took',time_wdr,'seconds')
@@ -487,47 +591,81 @@ def find_answer(table, desired_size, alg = ['comp','greedy_det','greedy_random',
         start_comp = time.time()
         comp_answers = tree.comprehensive_algorithm(desired_size)
         end_comp = time.time()
-        print('comprehensive answers:')
-        for answer in comp_answers:
-            print (answer)
-            print('certain rels:',answer.get_certain_relationships_count())
-            print('possible rels:',answer.get_expanded_possible_relationships_count())
+        if show_answers:
+            print('comprehensive DFS answers:')
+            for answer in comp_answers:
+                print (answer)
+                print('certain rels:',answer.get_certain_relationships_count())
+                print('possible rels:',answer.get_expanded_possible_relationships_count())
         time_comp = end_comp - start_comp
         if time_comp > time_to_show:
-            print('Comprehensive calculation took',time_comp,'seconds')
+            print('Comprehensive DFS calculation took',time_comp,'seconds')
     if alg != 'all except comp' and 'WDD' in alg:
     # if True:
         start_comp = time.time()
         comp_answers = tree.wide_deep_det(desired_size)
         end_comp = time.time()
-        print('wdd (comp) answers:')
-        for answer in comp_answers:
-            print (answer)
-            print('certain rels:',answer.get_certain_relationships_count())
-            print('possible rels:',answer.get_expanded_possible_relationships_count())
+        if show_answers:
+            print('wdd (comp) answers:')
+            for answer in comp_answers:
+                print (answer)
+                print('certain rels:',answer.get_certain_relationships_count())
+                print('possible rels:',answer.get_expanded_possible_relationships_count())
         time_comp = end_comp - start_comp
         if time_comp > time_to_show:
-            print('WDD Comprehensive calculation took',time_comp,'seconds')
+            print('WDD Comprehensive (BFS) calculation took',time_comp,'seconds')
+    if alg == 'all except comp' or 'sorted_nodes' in alg:
+        for nth in nth_list:
+            start_sorted = time.time()
+            s_answers = tree.sorted_nodes_algorithm(desired_size, nth = nth)
+            end_sorted = time.time()
+            if show_answers:
+                print('sorted alg answers (nth is '+str(nth)+')')
+                for answer in s_answers:
+                    print (answer)
+                    print('certain rels:',answer.get_certain_relationships_count())
+                    print('possible rels:',answer.get_expanded_possible_relationships_count())
+            time_sorted = end_sorted - start_sorted
+            if time_sorted > time_to_show:
+                print('Sorted algorithm with nth of '+str(nth)+ ' took', time_sorted, 'seconds')
+                
+
+# TODO: check if wide deep random works properly, it seems to take too long
 
 test_table = [['A','B','C'],['A','B','B']]
 test_columns = ['Col1','Col2','Col3']
 domains_cardinality = {'Col1':3, 'Col2':3, 'Col3':3, 'Col4':2}
 
+# rev_sorted_nodes = []
+# for t in [(1,1,1),(2,2,2),(1,1,2),(2,2,1)]:
+#     rev_sorted_nodes.append(t)
+
+# print(rev_sorted_nodes)
+# rev_sorted_nodes = sorted(rev_sorted_nodes, key=lambda score: (score[1], -score[2]))   
+# print(rev_sorted_nodes)
+# print(rev_sorted_nodes.pop(-1))
+# print(rev_sorted_nodes)
+
+
 t1 = Table(test_columns, test_table, {'Col1':3, 'Col2':3, 'Col3':3})
 print(t1)
-find_answer(t1, 1)
+find_answer(t1, 1, nth_list=[1,2, None])
 # find_answer(t1, 1, ['greedy_det','greedy_deep_det'])
+# find_answer(t1, 1, 'sorted_nodes', nth_list = [1,2])
+# find_answer(t1, 1, 'sorted_nodes')
+
+
 
 
 print('-----------------------------------------------')
 print('test 2')
 t2 = Table(test_columns,  [['A','B','C'],['A','C','B']], domains_cardinality)
 print(t2)
-find_answer(t2,1)
+find_answer(t2,1, nth_list=[1,2,3, None])
 # find_answer(t2,1,['greedy_det','greedy_deep_det']) 
 # find_answer(t2,1, 'all except comp')
 
-# TODO: ADD TO PAPER THIS EXAMPLE ON WHEN GREEDY DOESNT WORK
+# EXAMPLE ON WHEN GREEDY DOESNT WORK:
 # AT ABC, A**, greedy always chooses to remove last A in second column because it doesnt
 # reduce certain rels, but then *** is the only option
 # a better solution would be to do A**, A**
@@ -545,12 +683,17 @@ start = time.time()
 find_answer(t3,2, 'all except comp')
 # find_answer(t3,2, ['WDD','comp'])
 # find_answer(t3,2,['greedy_det','greedy_deep_det']) 
-# find_answer(t3,2)         # comp took 53,58, 67, 74, 120 sec to run
+find_answer(t3,2,nth_list=[1,2,3, None])         # comp took 53,58, 67, 74, 120 sec to run
+                                                # best answer is 2x 3,14
+                                                # sorted with nth of None took 1 second
 
 end = time.time()
 print('total time elapsed for test 3:',str(end-start))
 
-print('-----------------------------------------------')
+
+
+
+print('-----------------------------------------------------------------------------------------------------')
 print('test 4')
 t3 = Table(test_columns+['Col4'],  [['A','B','C','A'],['A','C','B','A'],['C','B','A','B']], domains_cardinality)
 print('original table:')
@@ -563,15 +706,16 @@ end = time.time()
 print('total time elapsed for test 4:',str(end-start))
 
 
-print('-----------------------------------------------')
+
+print('--------------------------------------------------------------------------------------------------------')
 print('test 5')
 t3 = Table(test_columns,  [['A','B','C'],['A','C','B'],['C','B','A'],['A','C','C']], domains_cardinality)      
 print('original table:')
 print(t3)
 start = time.time()
-find_answer(t3,2, 'all except comp')
-# find_answer(t3,2,['greedy_det','greedy_deep_det'])        # WSD 30s
+find_answer(t3,2, 'all except comp')                    # n=1 took 843 sec, got (3,14)
+# find_answer(t3,2,['greedy_det','greedy_deep_det'])        # WSD 30s, 14s
 
 end = time.time()
-print('total time elapsed for test 5:',str(end-start))
+print('total time elapsed for test 5:',str(end-start))      #
 
