@@ -300,7 +300,7 @@ class Table:
                                     else:
                                         double_counting = True
                                     
-        # go through the entirety of the wrongs dict and get the dom - wrongs values or self.domains_cardinality[col1] * self.domains_cardinality[col2] if both full
+        # go through the entirety of the unknowns dict and get the dom - unknowns values or self.domains_cardinality[col1] * self.domains_cardinality[col2] if both full
         if printing:
             print('unknowns final:',unknowns)
         
