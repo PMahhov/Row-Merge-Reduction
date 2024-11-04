@@ -2,6 +2,7 @@ from relationships_table_2 import Table
 import copy
 import time
 import random
+import heapq
 
 class TableTreeNode():
     '''
@@ -48,6 +49,22 @@ class TableTreeNode():
                     new_node = TableTreeNode(new_table, new_nullings)
                     self.children.append(new_node)
 
+
+class NodeScore():
+    def __init__(self, node, certains, possibles):
+        self.node = node
+        self.certains = certains
+        self.possibles = possibles
+
+    def __lt__(self, other):        # NB: since heapq uses minheap, here scores are inverted
+        if self.certains == other.certains:
+            return self.possibles < other.possibles
+        else:
+            return self.certains > other.certains
+
+    def get_node(self):
+        return self.node
+
 class TableTree():
     '''
     root: node with original table
@@ -78,7 +95,8 @@ class TableTree():
         current_layer = 0
 
         # TODO: switch rev sorted nodes from list to sth like an AVL tree
-        rev_sorted_nodes = []
+        # rev_sorted_nodes = []
+        node_scores_heap = []
 
         end_loop = False
 
@@ -95,43 +113,47 @@ class TableTree():
             if len(current_node.children) > 0:
                 for child in current_node.children:
 
-                    node_score = (child, child.get_certains(), child.get_exp_possibles())
+                    node_score = NodeScore(child, child.get_certains(), child.get_exp_possibles())
                     if child.get_size() <= desired_size:
                         # print('valid found', n_count)
                         # print(child)
                         if min_possibles == 'inf':
                                 best_valids = [child]
-                                max_certains = node_score[1]
-                                min_possibles = node_score[2]
+                                max_certains = node_score.certains
+                                min_possibles = node_score.possibles
                                 n_count += 1
-                        elif node_score[1] > max_certains:
+                        elif node_score.certains > max_certains:
                             best_valids = [child]
-                            max_certains = node_score[1]
-                            min_possibles = node_score[2]
+                            max_certains = node_score.certains
+                            min_possibles = node_score.possibles
                             n_count += 1
-                        elif node_score[1] == max_certains:
-                            if node_score[2] < min_possibles:
+                        elif node_score.certains == max_certains:
+                            if node_score.possibles < min_possibles:
                                 best_valids = [child]
-                                min_possibles = node_score[2]
+                                min_possibles = node_score.possibles
                                 n_count += 1
-                            elif node_score[2] == min_possibles:
+                            elif node_score.possibles == min_possibles:
                                 best_valids.append(child)
                         if n_count == nth:
                             end_loop = True
                             break
-                    else:       # if child is not valid, add to list to keep searching
-                        rev_sorted_nodes.append(node_score)
+                    else:       # if child is not valid, add to heap to keep searching
+                        heapq.heappush(node_scores_heap, node_score)
             
 
-                if len(rev_sorted_nodes) > 0:
+                if len(node_scores_heap) > 0:
+                    highest_score = heapq.heappop(node_scores_heap)
+                    current_node = highest_score.get_node()
+
                 # sort the list of nodes in reverse (sorting works in descending order)
                     # it is faster to pop the last than the first item in a list
                 #        (score 2 gets a minus sign, as it is a non-negative value that needs to be minimized
-                    rev_sorted_nodes = sorted(rev_sorted_nodes, key=lambda score: (score[1], -score[2]))   
+                    # rev_sorted_nodes = sorted(rev_sorted_nodes, key=lambda score: (score[1], -score[2]))   
                     # print('rev sorted_nodes')
                     # print(rev_sorted_nodes)
                 # take best node
-                    current_node = rev_sorted_nodes.pop(-1)[0]
+                    # current_node = rev_sorted_nodes.pop(-1)[0]
+
 
                     
 # only continue looping if the score of the best sorted is better than the current valid score
@@ -168,7 +190,7 @@ class TableTree():
                 unique_bests.append(current_node)
         return unique_bests
 
-    def greedy_algorithm(self, desired_size: int, loading_progress = True):
+    def greedy_algorithm(self, desired_size: int, loading_progress = False):
                 # reset children
         self.root.children = []
         
@@ -518,7 +540,7 @@ print(t3)
 start = time.time()
 # find_answer(t3,2, ['greedy, random walks', 'sorted order'], walks_count=5)                    # n=1 sorted took 843 sec, got (3,14)
 # find_answer(t3,2, ['greedy', 'random walks', 'exhaustive'], walks_count=10000)          
-find_answer(t3,2, ['greedy', 'random walks'], walks_count=100000)          
+find_answer(t3,2, ['greedy', 'random walks', 'sorted order', 'exhaustive'], walks_count=100000)          
 
 end = time.time()
 print('total time elapsed for test 5:',str(end-start))     
@@ -526,9 +548,9 @@ print('total time elapsed for test 5:',str(end-start))
 # greedy took 0.03s and got 1x(3,24), [ACB, ***]
 # 100 walks took 0.13s and got 1x(3,24), [ACB, ***]
 # 10000 walks took 0.05s and got same
-# sorted order took 746s and got 1x(3,14), [CBA, A**]
+# sorted order took 746s with list and 32s with heap and got 1x(3,14), [CBA, A**]
     # 6 nullings: [(13, 'Col3'), (10, 'Col2'), (13, 'Col2'), (11, 'Col3'), (11, 'Col2'), (10, 'Col3')]
-# exhaustive took 357s, 308s and got 1x(3,14), [CBA, A**]
+# exhaustive took 357s, 308s, 327s and got 1x(3,14), [CBA, A**]
     # 5 nullings:[(10, 'Col2'), (10, 'Col3'), (13, 'Col3'), (11, 'Col3'), (13, 'Col2')]
         # TODO: fix whatever reason is causing the last null not to appear, (11, Col2)
 
