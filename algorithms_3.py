@@ -3,6 +3,14 @@ import copy
 import time
 import random
 import heapq
+import sys
+
+save_output = True
+
+if save_output:
+    file = open('output.txt', 'a')
+    sys.stdout = file
+
 
 class TableTreeNode():
     '''
@@ -496,6 +504,10 @@ def find_answer(table, desired_size, alg = ['exhaustive', 'greedy','random walks
 test_table = [['A','B','C'],['A','B','B']]
 test_columns = ['Col1','Col2','Col3']
 domains_cardinality = {'Col1':3, 'Col2':3, 'Col3':3, 'Col4':2}
+
+
+print('========================================================================================================')
+print('test 1')
 t1 = Table(test_columns, test_table, {'Col1':3, 'Col2':3, 'Col3':3})
 print(t1)
 find_answer(t1, 1, walks_count = 2)
@@ -564,3 +576,10 @@ find_answer(t3,3, ['greedy', 'random walks', 'sorted order', 'exhaustive'], walk
 # find_answer(t3,2, ['greedy', 'random walks', 'sorted order', 'exhaustive'], walks_count=10000) 
 end = time.time()
 print('total time elapsed for test 6:',str(end-start))  
+
+
+
+
+
+if save_output:
+    file.close()
