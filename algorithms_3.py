@@ -63,10 +63,14 @@ class NodeScore():
         self.node = node
         self.certains = certains
         self.possibles = possibles
+        self.size = node.get_size()
 
-    def __lt__(self, other):        # NB: since heapq uses minheap, here scores are inverted
+    def __lt__(self, other):        # NB: since heapq uses minheap, here scores are inverted, so lower is better -> return True if self goes first
         if self.certains == other.certains:
-            return self.possibles < other.possibles
+            if self.possibles == other.possibles:
+                return self.size < other.size
+            else:
+                return self.possibles < other.possibles
         else:
             return self.certains > other.certains
 
@@ -80,7 +84,6 @@ class TableTree():
     '''
     def __init__(self, table):
         self.root = TableTreeNode(table)
-
 
     def sorted_order_algorithm(self, desired_size: int, nth = 1, loading_progress = False): # n-th: stop at the n-th valid answer
         # reset children:
@@ -102,8 +105,6 @@ class TableTree():
 
         current_layer = 0
 
-        # TODO: switch rev sorted nodes from list to sth like an AVL tree
-        # rev_sorted_nodes = []
         node_scores_heap = []
 
         end_loop = False
@@ -148,23 +149,13 @@ class TableTree():
                     else:       # if child is not valid, add to heap to keep searching
                         heapq.heappush(node_scores_heap, node_score)
             
-
+                # continue with the best node
                 if len(node_scores_heap) > 0:
                     highest_score = heapq.heappop(node_scores_heap)
                     current_node = highest_score.get_node()
 
-                # sort the list of nodes in reverse (sorting works in descending order)
-                    # it is faster to pop the last than the first item in a list
-                #        (score 2 gets a minus sign, as it is a non-negative value that needs to be minimized
-                    # rev_sorted_nodes = sorted(rev_sorted_nodes, key=lambda score: (score[1], -score[2]))   
-                    # print('rev sorted_nodes')
-                    # print(rev_sorted_nodes)
-                # take best node
-                    # current_node = rev_sorted_nodes.pop(-1)[0]
-
-
                     
-# only continue looping if the score of the best sorted is better than the current valid score
+                # only continue looping if the score of the best sorted is better than the current valid score
                     if len(best_valids) > 0:       
                         next_certains = current_node.get_certains() 
                         next_possibles = current_node.get_exp_possibles()
@@ -191,6 +182,9 @@ class TableTree():
                 else:
                     raise ValueError('No valid answer found') # should never happen if desired_size>0, *** is always valid
 
+        if len(best_valids) == 1:
+            return best_valids
+
         # remove duplicates
         unique_bests = []
         for current_node in best_valids:
@@ -198,6 +192,122 @@ class TableTree():
                 unique_bests.append(current_node)
         return unique_bests
 
+    # sorted order but if a merge is found, only continue from there
+    def merge_greedy_algorithm(self, desired_size: int, nth = 1, loading_progress = False):
+        # reset children:
+        self.root.children = []
+
+        best_valids = []
+        max_certains = 0
+        min_possibles = 'inf'
+
+        n_count = 0
+
+        if self.root.get_size() <= desired_size:
+            return [self.root.table]
+
+        current_node = self.root
+
+        current_size = self.root.get_size()
+
+        node_scores_heap = []
+
+        end_loop = False
+
+        if loading_progress:
+            print('Starting sorted order algorithm')
+            last_displayed_size = current_size
+            print('Starting size:',current_size)
+
+        while not end_loop:
+                    # loading progress
+            if loading_progress:
+                if last_displayed_size != current_size:
+                    last_displayed_size = current_size
+                    print('Size:',current_size)
+
+
+            current_node.add_layer()        # creates all children of node
+            if len(current_node.children) > 0:
+                for child in current_node.children:                    
+                    node_score = NodeScore(child, child.get_certains(), child.get_exp_possibles())
+                    if child.get_size() <= desired_size:
+                        # print('valid found', n_count)
+                        # print(child)
+                        if min_possibles == 'inf':
+                                best_valids = [child]
+                                max_certains = node_score.certains
+                                min_possibles = node_score.possibles
+                                n_count += 1
+                        elif node_score.certains > max_certains:
+                            best_valids = [child]
+                            max_certains = node_score.certains
+                            min_possibles = node_score.possibles
+                            n_count += 1
+                        elif node_score.certains == max_certains:
+                            if node_score.possibles < min_possibles:
+                                best_valids = [child]
+                                min_possibles = node_score.possibles
+                                n_count += 1
+                            elif node_score.possibles == min_possibles:
+                                best_valids.append(child)
+                        if n_count == nth:
+                            end_loop = True
+                            break
+                    elif child.get_size() < current_size: # a merge is found, continue with this one
+                        node_scores_heap = [node_score]  # reset heap
+                        current_size = child.get_size()
+                        break
+
+                    else:       # if child is not valid, add to heap to keep searching
+                        heapq.heappush(node_scores_heap, node_score)
+
+                # continue with the best node
+                if len(node_scores_heap) > 0:
+                    highest_score = heapq.heappop(node_scores_heap)
+                    current_node = highest_score.get_node()
+
+                    
+                # only continue looping if the score of the best sorted is better than the current valid score
+                    if len(best_valids) > 0:       
+                        next_certains = current_node.get_certains() 
+                        next_possibles = current_node.get_exp_possibles()
+                        # print(next_certains, next_possibles, 'vs', max_certains, min_possibles)
+                        if next_certains < max_certains:
+                            end_loop = True
+                            break
+                        elif next_certains == max_certains:
+                            if next_possibles >= min_possibles: # this could be == if it is important to not lose potential identical-scoring answers
+                                end_loop = True
+                                break
+
+                else:
+                    end_loop = True
+                    break
+
+                if end_loop:
+                    break
+
+            else:                       
+                if len(best_valids) > 0:
+                    end_loop = True
+                    break
+                else:
+                    raise ValueError('No valid answer found') # should never happen if desired_size>0, *** is always valid
+
+        if len(best_valids) == 1:
+            return best_valids
+
+        # remove duplicates
+        unique_bests = []
+        for current_node in best_valids:
+            if not any(existing_table.is_same(current_node) for existing_table in unique_bests):
+                unique_bests.append(current_node)
+        return unique_bests
+
+
+
+# take the highest score in layer, only continue with that one
     def greedy_algorithm(self, desired_size: int, loading_progress = False):
                 # reset children
         self.root.children = []
@@ -442,7 +552,7 @@ class TableTree():
         return unique_bests
 
 
-def find_answer(table, desired_size, alg = ['exhaustive', 'greedy','random walks','sorted order'], walks_count = 1, time_to_show = 0, show_answers = True):
+def find_answer(table, desired_size, alg = ['exhaustive', 'greedy','random walks','merge greedy','sorted order'], walks_count = 1, time_to_show = 0, show_answers = True):
     tree = TableTree(table)
     print('alg is',alg)
     if alg == 'all except exhaustive' or 'greedy' in alg:
@@ -463,7 +573,7 @@ def find_answer(table, desired_size, alg = ['exhaustive', 'greedy','random walks
         walks_answers = tree.random_walks_algorithm(desired_size, walks_count)
         end_walks = time.time()
         if show_answers:
-            print('random walks answers:')
+            print(walks_count,'random walks answers:')
             for answer in walks_answers:
                 print(answer)
                 print('Score (certains, possibles):',f'({answer.get_certains()}, {answer.get_exp_possibles()})')
@@ -471,6 +581,19 @@ def find_answer(table, desired_size, alg = ['exhaustive', 'greedy','random walks
         time_walks = end_walks - start_walks
         if time_walks > time_to_show:
             print(walks_count,'random walks took', time_walks,'seconds')
+    if alg == 'all except exhaustive' or 'merge greedy' in alg:
+        start_merge_greedy = time.time()
+        merge_greedy_answers = tree.merge_greedy_algorithm(desired_size)
+        end_merge_greedy = time.time()
+        if show_answers:
+            print('merge greedy answers:')
+            for answer in merge_greedy_answers:
+                print(answer)
+                print('Score (certains, possibles):',f'({answer.get_certains()}, {answer.get_exp_possibles()})')
+                print(len(answer.nullings),'nullings:',answer.nullings)
+        time_merge_greedy = end_merge_greedy - start_merge_greedy
+        if time_merge_greedy > time_to_show:
+            print('Merge greedy took', time_merge_greedy,'seconds')            
     if alg == 'all except exhaustive' or 'sorted order' in alg:
         start_sorted_order = time.time()
         sorted_order_answers = tree.sorted_order_algorithm(desired_size)
@@ -550,9 +673,9 @@ t3 = Table(test_columns,  [['A','B','C'],['A','C','B'],['C','B','A'],['A','C','C
 print('original table:')
 print(t3)
 start = time.time()
-# find_answer(t3,2, ['greedy, random walks', 'sorted order'], walks_count=5)                    # n=1 sorted took 843 sec, got (3,14)
+find_answer(t3,2, ['greedy', 'random walks', 'merge greedy', 'sorted order'], walks_count=10000)                    # n=1 sorted took 843 sec, got (3,14)
 # find_answer(t3,2, ['greedy', 'random walks', 'exhaustive'], walks_count=10000)          
-find_answer(t3,2, ['greedy', 'random walks', 'sorted order', 'exhaustive'], walks_count=100000)          
+# find_answer(t3,2, ['greedy', 'random walks', 'sorted order', 'exhaustive'], walks_count=100000)          
 
 end = time.time()
 print('total time elapsed for test 5:',str(end-start))     
@@ -572,7 +695,7 @@ t3 = Table(test_columns,  [['A','B','C'],['D','B','E'],['A','E','C'],['A','B','F
 print('original table:')
 print(t3)
 start = time.time()
-find_answer(t3,3, ['greedy', 'random walks', 'sorted order', 'exhaustive'], walks_count=10000)          
+find_answer(t3,3, walks_count=10000)          
 # find_answer(t3,2, ['greedy', 'random walks', 'sorted order', 'exhaustive'], walks_count=10000) 
 end = time.time()
 print('total time elapsed for test 6:',str(end-start))  
