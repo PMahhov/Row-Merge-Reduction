@@ -65,10 +65,17 @@ class Row(Node):
     def get_relationship_count(self):
         return len(self.relationships)
 
+    def get_attributes_set(self):
+        attributes_set = set()
+        for key, value in self.attributes.items():
+            attributes_set.add(str(key)+str(value))
+        return attributes_set
+
+
 class Table:
     '''
     - rows: list of row objects
-    # - rows_dict: dict of id:row
+    - rows_dict: dict of id:row
     - columns: list of column names
     - domains_cardinality: dict of column_label:domain size
     - relationships: set of all relationships
@@ -80,7 +87,7 @@ class Table:
         self.rows = []
         if origin == 'lists':
             self.columns = columns
-            # self.rows_dict = {}
+            self.rows_dict = {}
             for i, initial_row in enumerate(initial_list):
                 self.create_row(initial_row, i)
         elif origin == 'row objects':
@@ -139,7 +146,7 @@ class Table:
         for i, value in enumerate(new_row):
             row_object.set_value(self.columns[i], value)
         self.rows.append(row_object)
-        # self.rows_dict[row_object.get_id()] = row_object
+        self.rows_dict[row_object.get_id()] = row_object
 
     def remove_row(self, row):
         self.rows.remove(row)
@@ -338,7 +345,7 @@ class Table:
         # print('final exp rel count', expanded_possible_rel_count, 'with compensation of', double_counting_compensation, 'and adjustment of', double_star_adjustment)
         return expanded_possible_rel_count
 
-    def make_null_in_place(self, row, column_name, row_input = 'order'):     # row object or row id
+    def make_null_in_place(self, row, column_name, row_input = 'order', update = True, merge = True):     # row object or row id
         if row_input == 'order' and (type(row) == int or type(row) == str):
             for r in self.rows:
                 if r.order == row:
@@ -351,9 +358,15 @@ class Table:
                 if r.get_id() == row:
                     row = r
                     break
+        elif row_input == 'object':     # just to make it explicit
+            pass
         row.set_value(column_name, '*')
-        self.update_all_relationships()         # there might be a way to keep track of which rels come from which row, and then edit the list in a targeted way
-        merge_count = self.check_merges()
+        if update:
+            self.update_all_relationships()         # there might be a way to keep track of which rels come from which row, and then edit the list in a targeted way
+        if merge:
+            merge_count = self.check_merges()
+        else:
+            merge_count = 0
         return merge_count
 
     def make_null_copying_row(self,row,column_name):
@@ -371,7 +384,7 @@ class Table:
         merge_count = self.check_merges()
         return merge_count
 
-    def check_merges(self):
+    def check_merges(self): # first equal row in order is kept, next ones are removed
         merge_count = 0
         new_rows = []
         for i, current_row in enumerate(self.rows):

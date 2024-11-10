@@ -4,8 +4,10 @@ import time
 import random
 import heapq
 import sys
+# import datasketch
 
 save_output = True
+testing = False
 
 if save_output:
     file = open('output.txt', 'a')
@@ -21,7 +23,7 @@ class TableTreeNode():
     '''
     def __init__(self, table, nullings = []):
         self.table = table
-        self.nullings = nullings            # TODO: be able to track nullings
+        self.nullings = nullings          
         self.children = []
 
     def __str__(self):
@@ -84,6 +86,108 @@ class TableTree():
     '''
     def __init__(self, table):
         self.root = TableTreeNode(table)
+
+# check similarities of 2-row combinations, then merge most similar, repeat
+    def similarity_algorithm(self, desired_size: int, loading_progress = False, make_copy = True): # TODO: vs 'minhash' vs 'minhash lsh'  
+        if make_copy:
+            table = copy.deepcopy(self.root.table)
+        else:
+            table = self.root.table
+
+        if loading_progress:
+            print('Calculating initial similarities')
+
+        nullings = [] 
+        similarity_heap = []
+        
+        for i in range(len(table.rows)):
+            for j in range(i+1, len(table.rows)):
+                row_1 = table.rows[i]
+                row_2 = table.rows[j]
+                pair = frozenset([row_1, row_2])
+
+                row_1_attributes = row_1.get_attributes_set()
+                row_2_attributes = row_2.get_attributes_set()
+                intersection = row_1_attributes.intersection(row_2_attributes)
+                union = row_1_attributes.union(row_2_attributes)
+                jaccard_sim = float(len(intersection)) / float(len(union))
+                
+                heapq.heappush(similarity_heap, (-jaccard_sim, pair))
+        
+        columns = table.columns
+        while table.get_size() > desired_size:
+        # find best pair
+            best_pair = heapq.heappop(similarity_heap)[1]
+            rows = []
+            for row in best_pair:
+                rows.append(row)
+
+            row_1 = rows[0]
+            row_2 = rows[1]
+        
+        # merge best pair
+            for column in columns:
+                if row_1.get_value(column) != row_2.get_value(column):
+                    table.make_null_in_place(row_1, column, row_input='object', update = False, merge = False)
+                    table.make_null_in_place(row_2, column, row_input='object', update = False, merge = False)
+                    nullings.extend([(row_1.get_id(), column),(row_2.get_id(), column)]) # append both nulling operation records
+            table.update_all_relationships()
+            table.check_merges()
+
+        # replace old values with new values:
+
+            # determine which row stayed, row 1 or row 2
+            new_row = None
+            for row in table.rows:
+                if row == row_1:
+                    new_row = row_1
+                    old_row = row_2
+                elif row == row_2:
+                    new_row = row_2
+                    old_row = row_1
+            if new_row == None:
+                raise ValueError ('Neither row could be found in table after merge')
+
+            # go through the list, find those where that row is in pair, recalculate the value
+            
+
+            to_delete = []
+            # print('sim heap', similarity_heap)
+            for i, element in enumerate(similarity_heap):
+                neg_sim, pair = element
+                replace = False
+                for row in pair:
+                    if row == old_row:  # delete
+                        to_delete.append(i)
+                        # del similarity_heap[i]  <-- can't do this yet, it would mess up the indexes
+                    elif row == new_row:   # replace
+                        replace = True
+                if replace:
+                    # print(table)
+                    rows = []
+                    for row in pair:
+                        rows.append(row)
+                    row_1 = rows[0]
+                    row_2 = rows[1]
+                    row_1_attributes = row_1.get_attributes_set()
+                    row_2_attributes = row_2.get_attributes_set()
+                    intersection = row_1_attributes.intersection(row_2_attributes)
+                    union = row_1_attributes.union(row_2_attributes)
+                    jaccard_sim = float(len(intersection)) / float(len(union))
+                    similarity_heap[i] = (-jaccard_sim, pair)
+
+            # print('to delete', to_delete)
+            for index in reversed(to_delete):
+                # print('deleting', index)
+                del similarity_heap[index]
+
+
+            # resort the heap
+            heapq.heapify(similarity_heap) 
+
+        # repeat until desired size is reached
+        
+        return [TableTreeNode(table, nullings)]
 
     def sorted_order_algorithm(self, desired_size: int, nth = 1, loading_progress = False): # n-th: stop at the n-th valid answer
         # reset children:
@@ -552,9 +656,25 @@ class TableTree():
         return unique_bests
 
 
-def find_answer(table, desired_size, alg = ['exhaustive', 'greedy','random walks','merge greedy','sorted order'], walks_count = 1, time_to_show = 0, show_answers = True):
+def find_answer(table, desired_size, alg = ['similarity', 'greedy','random walks','merge greedy','sorted order','exhaustive'], walks_count = 1, time_to_show = 0, show_answers = True):
     tree = TableTree(table)
     print('alg is',alg)
+    if alg == 'all except exhaustive' or 'similarity' in alg:
+        start_similarity = time.time()
+        if alg == ['similarity']:
+            similarity_answers = tree.similarity_algorithm(desired_size, make_copy = False)
+        else:
+            similarity_answers = tree.similarity_algorithm(desired_size)
+        end_similarity = time.time()
+        if show_answers:
+            print('similarity answers:')
+            for answer in similarity_answers:
+                print(answer)
+                print('Score (certains, possibles):',f'({answer.get_certains()}, {answer.get_exp_possibles()})')
+                print(len(answer.nullings),'nullings:',answer.nullings)
+        time_similarity = end_similarity - start_similarity
+        if time_similarity > time_to_show:
+            print('Similarity took', time_similarity,'seconds')
     if alg == 'all except exhaustive' or 'greedy' in alg:
         start_greedy= time.time()
         greedy_answers = tree.greedy_algorithm(desired_size)
@@ -622,83 +742,92 @@ def find_answer(table, desired_size, alg = ['exhaustive', 'greedy','random walks
         if time_comp > time_to_show:
             print('Exhaustive calculation took',time_comp,'seconds')            
 
+if testing:
+
+    test_table = [['A','B','C'],['A','B','B']]
+    test_columns = ['Col1','Col2','Col3']
+    domains_cardinality = {'Col1':3, 'Col2':3, 'Col3':3, 'Col4':2}
 
 
-test_table = [['A','B','C'],['A','B','B']]
-test_columns = ['Col1','Col2','Col3']
-domains_cardinality = {'Col1':3, 'Col2':3, 'Col3':3, 'Col4':2}
+    print('========================================================================================================')
+    print('test 1')
+    t1 = Table(test_columns, test_table, {'Col1':3, 'Col2':3, 'Col3':3})
+    print(t1)
+    find_answer(t1, 1, walks_count = 2)
+
+    print('-----------------------------------------------')
+    print('test 2')
+    t2 = Table(test_columns,  [['A','B','C'],['A','C','B']], domains_cardinality)
+    print(t2)
+    find_answer(t2,1, walks_count = 20)
 
 
-print('========================================================================================================')
-print('test 1')
-t1 = Table(test_columns, test_table, {'Col1':3, 'Col2':3, 'Col3':3})
-print(t1)
-find_answer(t1, 1, walks_count = 2)
+    print('-----------------------------------------------')
+    print('test 3')
+    t3 = Table(test_columns,  [['A','B','C'],['A','C','B'],['C','B','A']], domains_cardinality)     
+    print('original table:')
+    print(t3)
+    start = time.time()
+    find_answer(t3,2,walks_count=3)         # comp took 53,58, 67, 74, 120 sec to run
+                                                    # best answer is 2x (3,14)                                                
+    end = time.time()
+    print('total time elapsed for test 3:',str(end-start))
 
-print('-----------------------------------------------')
-print('test 2')
-t2 = Table(test_columns,  [['A','B','C'],['A','C','B']], domains_cardinality)
-print(t2)
-find_answer(t2,1, walks_count = 20)
-
-
-print('-----------------------------------------------')
-print('test 3')
-t3 = Table(test_columns,  [['A','B','C'],['A','C','B'],['C','B','A']], domains_cardinality)     
-print('original table:')
-print(t3)
-start = time.time()
-find_answer(t3,2,walks_count=3)         # comp took 53,58, 67, 74, 120 sec to run
-                                                # best answer is 2x (3,14)                                                
-end = time.time()
-print('total time elapsed for test 3:',str(end-start))
-
-print('-----------------------------------------------------------------------------------------------------')
-print('test 4')
-t3 = Table(test_columns+['Col4'],  [['A','B','C','A'],['A','C','B','A'],['C','B','A','B']], domains_cardinality)
-print('original table:')
-print(t3)
-start = time.time()
-# find_answer(t3,2,'all except exhaustive', walks_count=4)           # sorted 3s, exh 21s, same answer
-find_answer(t3,2, 'all except exhaustive', walks_count= 10000)           #   best answer is 1x (7,20)
+    print('-----------------------------------------------------------------------------------------------------')
+    print('test 4')
+    t3 = Table(test_columns+['Col4'],  [['A','B','C','A'],['A','C','B','A'],['C','B','A','B']], domains_cardinality)
+    print('original table:')
+    print(t3)
+    start = time.time()
+    # find_answer(t3,2,'all except exhaustive', walks_count=4)           # sorted 3s, exh 21s, same answer
+    find_answer(t3,2, 'all except exhaustive', walks_count= 10000)           #   best answer is 1x (7,20)
 
 
-end = time.time()
-print('total time elapsed for test 4:',str(end-start))
+    end = time.time()
+    print('total time elapsed for test 4:',str(end-start))
 
 
-print('--------------------------------------------------------------------------------------------------------')
-print('test 5')
-t3 = Table(test_columns,  [['A','B','C'],['A','C','B'],['C','B','A'],['A','C','C']], domains_cardinality)      
-print('original table:')
-print(t3)
-start = time.time()
-find_answer(t3,2, ['greedy', 'random walks', 'merge greedy', 'sorted order'], walks_count=10000)                    # n=1 sorted took 843 sec, got (3,14)
-# find_answer(t3,2, ['greedy', 'random walks', 'exhaustive'], walks_count=10000)          
-# find_answer(t3,2, ['greedy', 'random walks', 'sorted order', 'exhaustive'], walks_count=100000)          
+    print('--------------------------------------------------------------------------------------------------------')
+    print('test 5')
+    t3 = Table(test_columns,  [['A','B','C'],['A','C','B'],['C','B','A'],['A','C','C']], domains_cardinality)      
+    print('original table:')
+    print(t3)
+    start = time.time()
+    find_answer(t3,2, 'all except exhaustive', walks_count=10000)                    # n=1 sorted took 843 sec, got (3,14)
+    # find_answer(t3,2, ['greedy', 'random walks', 'exhaustive'], walks_count=10000)          
+    # find_answer(t3,2, ['greedy', 'random walks', 'sorted order', 'exhaustive'], walks_count=100000)          
 
-end = time.time()
-print('total time elapsed for test 5:',str(end-start))     
+    end = time.time()
+    print('total time elapsed for test 5:',str(end-start))     
 
-# greedy took 0.03s and got 1x(3,24), [ACB, ***]
-# 100 walks took 0.13s and got 1x(3,24), [ACB, ***]
-# 10000 walks took 0.05s and got same
-# sorted order took 746s with list and 32s with heap and got 1x(3,14), [CBA, A**]
-    # 6 nullings: [(13, 'Col3'), (10, 'Col2'), (13, 'Col2'), (11, 'Col3'), (11, 'Col2'), (10, 'Col3')]
-# exhaustive took 357s, 308s, 327s and got 1x(3,14), [CBA, A**]
-    # 5 nullings:[(10, 'Col2'), (10, 'Col3'), (13, 'Col3'), (11, 'Col3'), (13, 'Col2')]
-        # TODO: fix whatever reason is causing the last null not to appear, (11, Col2)
+    # greedy took 0.03s and got 1x(3,24), [ACB, ***]
+    # 100 walks took 0.13s and got 1x(3,24), [ACB, ***]
+    # 10000 walks took 0.05s and got same
+    # sorted order took 746s with list and 32s with heap and got 1x(3,14), [CBA, A**]
+        # 6 nullings: [(13, 'Col3'), (10, 'Col2'), (13, 'Col2'), (11, 'Col3'), (11, 'Col2'), (10, 'Col3')]
+    # exhaustive took 357s, 308s, 327s and got 1x(3,14), [CBA, A**]
+        # 5 nullings:[(10, 'Col2'), (10, 'Col3'), (13, 'Col3'), (11, 'Col3'), (13, 'Col2')]
+            # 5 operations for 6 nulls because a merge takes place before
 
-print('--------------------------------------------------------------------------------------------------------')
-print('test 6')
-t3 = Table(test_columns,  [['A','B','C'],['D','B','E'],['A','E','C'],['A','B','F']])      
-print('original table:')
-print(t3)
-start = time.time()
-find_answer(t3,3, walks_count=10000)          
-# find_answer(t3,2, ['greedy', 'random walks', 'sorted order', 'exhaustive'], walks_count=10000) 
-end = time.time()
-print('total time elapsed for test 6:',str(end-start))  
+    print('--------------------------------------------------------------------------------------------------------')
+    print('test 6')
+    t3 = Table(test_columns,  [['A','B','C'],['D','B','E'],['A','E','C'],['A','B','F']])      
+    print('original table:')
+    print(t3)
+    start = time.time()
+    find_answer(t3,3, walks_count=10000)
+    end = time.time()
+    print('total time elapsed for test 6:',str(end-start))            
+    print('--------------------------------------------------------------------------------------------------------')
+    print('test 7')
+    print('original table:')
+    print(t3)
+    start = time.time()
+    # find_answer(t3,2, 'all except exhaustive', walks_count=10000)     
+    find_answer(t3,2, walks_count=10000)     
+    # find_answer(t3,2, ['greedy', 'random walks', 'sorted order', 'exhaustive'], walks_count=10000) 
+    end = time.time()
+    print('total time elapsed for test 7:',str(end-start))  
 
 
 

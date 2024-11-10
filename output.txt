@@ -1,0 +1,365 @@
+========================================================================================================
+test 1
+Col1, Col2, Col3
+A, B, C, --id: 0
+A, B, B, --id: 1
+alg is ['similarity', 'greedy', 'random walks', 'merge greedy', 'sorted order', 'exhaustive']
+similarity answers:
+Col1, Col2, Col3
+A, B, *, --id: 1
+Score (certains, possibles): (1, 6)
+2 nullings: [(1, 'Col3'), (0, 'Col3')]
+greedy answers:
+Col1, Col2, Col3
+*, *, *, --id: 1
+Score (certains, possibles): (0, 27)
+6 nullings: [(1, 'Col1'), (1, 'Col3'), (1, 'Col2'), (0, 'Col1'), (0, 'Col3'), (0, 'Col2')]
+Greedy took 0.005000114440917969 seconds
+2 random walks answers:
+Col1, Col2, Col3
+A, B, *, --id: 1
+Score (certains, possibles): (1, 6)
+2 nullings: [(1, 'Col3'), (0, 'Col3')]
+2 random walks took 0.002000093460083008 seconds
+merge greedy answers:
+Col1, Col2, Col3
+A, B, *, --id: 1
+Score (certains, possibles): (1, 6)
+2 nullings: [(0, 'Col3'), (1, 'Col3')]
+Merge greedy took 0.0019998550415039062 seconds
+sorted order answers:
+Col1, Col2, Col3
+A, B, *, --id: 1
+Score (certains, possibles): (1, 6)
+2 nullings: [(0, 'Col3'), (1, 'Col3')]
+Sorted order took 0.003032207489013672 seconds
+Starting exhaustive algorithm
+Layer 1
+Layer 2
+Layer 3
+exhaustive answers:
+Col1, Col2, Col3
+A, B, *, --id: 1
+Score (certains, possibles): (1, 6)
+2 nullings: [(1, 'Col3'), (0, 'Col3')]
+Exhaustive calculation took 0.01396799087524414 seconds
+-----------------------------------------------
+test 2
+Col1, Col2, Col3
+A, B, C, --id: 2
+A, C, B, --id: 3
+alg is ['similarity', 'greedy', 'random walks', 'merge greedy', 'sorted order', 'exhaustive']
+similarity answers:
+Col1, Col2, Col3
+A, *, *, --id: 3
+Score (certains, possibles): (0, 15)
+4 nullings: [(3, 'Col2'), (2, 'Col2'), (3, 'Col3'), (2, 'Col3')]
+greedy answers:
+Col1, Col2, Col3
+*, *, *, --id: 3
+Score (certains, possibles): (0, 27)
+6 nullings: [(3, 'Col2'), (3, 'Col3'), (3, 'Col1'), (2, 'Col3'), (2, 'Col2'), (2, 'Col1')]
+Greedy took 0.0030014514923095703 seconds
+20 random walks answers:
+Col1, Col2, Col3
+A, *, *, --id: 3
+Score (certains, possibles): (0, 15)
+4 nullings: [(2, 'Col2'), (2, 'Col3'), (3, 'Col3'), (3, 'Col2')]
+20 random walks took 0.005001068115234375 seconds
+merge greedy answers:
+Col1, Col2, Col3
+A, *, *, --id: 3
+Score (certains, possibles): (0, 15)
+4 nullings: [(3, 'Col3'), (2, 'Col3'), (2, 'Col2'), (3, 'Col2')]
+Merge greedy took 0.016005277633666992 seconds
+sorted order answers:
+Col1, Col2, Col3
+A, *, *, --id: 3
+Score (certains, possibles): (0, 15)
+4 nullings: [(3, 'Col3'), (2, 'Col3'), (2, 'Col2'), (3, 'Col2')]
+Sorted order took 0.017996788024902344 seconds
+Starting exhaustive algorithm
+Layer 1
+Layer 2
+Layer 3
+Layer 4
+exhaustive answers:
+Col1, Col2, Col3
+A, *, *, --id: 3
+Score (certains, possibles): (0, 15)
+4 nullings: [(2, 'Col2'), (2, 'Col3'), (3, 'Col3'), (3, 'Col2')]
+Exhaustive calculation took 0.07599639892578125 seconds
+-----------------------------------------------
+test 3
+original table:
+Col1, Col2, Col3
+A, B, C, --id: 4
+A, C, B, --id: 5
+C, B, A, --id: 6
+alg is ['similarity', 'greedy', 'random walks', 'merge greedy', 'sorted order', 'exhaustive']
+similarity answers:
+Col1, Col2, Col3
+A, *, *, --id: 5
+C, B, A, --id: 6
+Score (certains, possibles): (3, 14)
+4 nullings: [(5, 'Col2'), (4, 'Col2'), (5, 'Col3'), (4, 'Col3')]
+greedy answers:
+Col1, Col2, Col3
+A, C, B, --id: 5
+*, *, *, --id: 6
+Score (certains, possibles): (3, 24)
+6 nullings: [(4, 'Col3'), (4, 'Col1'), (4, 'Col2'), (6, 'Col3'), (6, 'Col2'), (6, 'Col1')]
+Greedy took 0.006999969482421875 seconds
+3 random walks answers:
+Col1, Col2, Col3
+A, *, *, --id: 5
+C, *, A, --id: 6
+Score (certains, possibles): (1, 18)
+5 nullings: [(6, 'Col2'), (5, 'Col2'), (4, 'Col2'), (5, 'Col3'), (4, 'Col3')]
+3 random walks took 0.01800060272216797 seconds
+merge greedy answers:
+Col1, Col2, Col3
+A, C, B, --id: 5
+*, B, *, --id: 6
+Score (certains, possibles): (3, 14)
+4 nullings: [(4, 'Col1'), (4, 'Col3'), (6, 'Col3'), (6, 'Col1')]
+Merge greedy took 0.07300496101379395 seconds
+sorted order answers:
+Col1, Col2, Col3
+A, C, B, --id: 5
+*, B, *, --id: 6
+Score (certains, possibles): (3, 14)
+4 nullings: [(4, 'Col1'), (4, 'Col3'), (6, 'Col3'), (6, 'Col1')]
+Sorted order took 0.07299447059631348 seconds
+Starting exhaustive algorithm
+Layer 1
+Layer 2
+Layer 3
+Layer 4
+exhaustive answers:
+Col1, Col2, Col3
+A, C, B, --id: 5
+*, B, *, --id: 6
+Score (certains, possibles): (3, 14)
+4 nullings: [(4, 'Col1'), (4, 'Col3'), (6, 'Col3'), (6, 'Col1')]
+Col1, Col2, Col3
+A, *, *, --id: 5
+C, B, A, --id: 6
+Score (certains, possibles): (3, 14)
+4 nullings: [(4, 'Col2'), (4, 'Col3'), (5, 'Col2'), (5, 'Col3')]
+Exhaustive calculation took 0.7322506904602051 seconds
+total time elapsed for test 3: 0.9234299659729004
+-----------------------------------------------------------------------------------------------------
+test 4
+original table:
+Col1, Col2, Col3, Col4
+A, B, C, A, --id: 7
+A, C, B, A, --id: 8
+C, B, A, B, --id: 9
+alg is all except exhaustive
+similarity answers:
+Col1, Col2, Col3, Col4
+A, *, *, A, --id: 8
+C, B, A, B, --id: 9
+Score (certains, possibles): (7, 20)
+4 nullings: [(7, 'Col2'), (8, 'Col2'), (7, 'Col3'), (8, 'Col3')]
+greedy answers:
+Col1, Col2, Col3, Col4
+*, *, *, *, --id: 8
+C, B, A, B, --id: 9
+Score (certains, possibles): (6, 39)
+8 nullings: [(7, 'Col4'), (7, 'Col3'), (7, 'Col2'), (7, 'Col1'), (8, 'Col1'), (8, 'Col2'), (8, 'Col3'), (8, 'Col4')]
+Greedy took 0.017918825149536133 seconds
+10000 random walks answers:
+Col1, Col2, Col3, Col4
+*, *, *, A, --id: 8
+*, B, *, B, --id: 9
+Score (certains, possibles): (1, 42)
+8 nullings: [(9, 'Col1'), (8, 'Col1'), (7, 'Col1'), (9, 'Col3'), (7, 'Col2'), (8, 'Col3'), (8, 'Col2'), (7, 'Col3')]
+10000 random walks took 0.07556295394897461 seconds
+merge greedy answers:
+Col1, Col2, Col3, Col4
+A, *, *, A, --id: 8
+C, B, A, B, --id: 9
+Score (certains, possibles): (7, 20)
+4 nullings: [(8, 'Col3'), (7, 'Col2'), (8, 'Col2'), (7, 'Col3')]
+Merge greedy took 1.8243088722229004 seconds
+sorted order answers:
+Col1, Col2, Col3, Col4
+A, *, *, A, --id: 8
+C, B, A, B, --id: 9
+Score (certains, possibles): (7, 20)
+4 nullings: [(8, 'Col3'), (7, 'Col2'), (8, 'Col2'), (7, 'Col3')]
+Sorted order took 2.0729401111602783 seconds
+total time elapsed for test 4: 4.027730703353882
+--------------------------------------------------------------------------------------------------------
+test 5
+original table:
+Col1, Col2, Col3
+A, B, C, --id: 10
+A, C, B, --id: 11
+C, B, A, --id: 12
+A, C, C, --id: 13
+alg is all except exhaustive
+similarity answers:
+Col1, Col2, Col3
+C, B, A, --id: 12
+A, *, *, --id: 13
+Score (certains, possibles): (3, 14)
+6 nullings: [(10, 'Col2'), (13, 'Col2'), (13, 'Col2'), (11, 'Col2'), (13, 'Col3'), (11, 'Col3')]
+greedy answers:
+Col1, Col2, Col3
+A, C, B, --id: 11
+*, *, *, --id: 13
+Score (certains, possibles): (3, 24)
+9 nullings: [(13, 'Col1'), (13, 'Col2'), (13, 'Col3'), (10, 'Col2'), (10, 'Col1'), (10, 'Col3'), (12, 'Col3'), (12, 'Col1'), (12, 'Col2')]
+Greedy took 0.026995182037353516 seconds
+10000 random walks answers:
+Col1, Col2, Col3
+C, B, *, --id: 12
+*, *, *, --id: 13
+Score (certains, possibles): (1, 26)
+10 nullings: [(13, 'Col3'), (11, 'Col1'), (11, 'Col2'), (10, 'Col2'), (10, 'Col3'), (13, 'Col1'), (12, 'Col3'), (10, 'Col1'), (13, 'Col2'), (11, 'Col3')]
+10000 random walks took 0.061004638671875 seconds
+merge greedy answers:
+Col1, Col2, Col3
+C, B, A, --id: 12
+A, *, *, --id: 13
+Score (certains, possibles): (3, 14)
+5 nullings: [(13, 'Col3'), (11, 'Col3'), (10, 'Col3'), (10, 'Col2'), (13, 'Col2')]
+Merge greedy took 0.015030860900878906 seconds
+sorted order answers:
+Col1, Col2, Col3
+C, B, A, --id: 12
+A, *, *, --id: 13
+Score (certains, possibles): (3, 14)
+6 nullings: [(13, 'Col2'), (13, 'Col3'), (10, 'Col2'), (10, 'Col3'), (11, 'Col3'), (11, 'Col2')]
+Sorted order took 29.33383536338806 seconds
+total time elapsed for test 5: 29.993897199630737
+--------------------------------------------------------------------------------------------------------
+test 6
+original table:
+Col1, Col2, Col3
+A, B, C, --id: 14
+D, B, E, --id: 15
+A, E, C, --id: 16
+A, B, F, --id: 17
+alg is ['similarity', 'greedy', 'random walks', 'merge greedy', 'sorted order', 'exhaustive']
+similarity answers:
+Col1, Col2, Col3
+D, B, E, --id: 15
+A, *, C, --id: 16
+A, B, F, --id: 17
+Score (certains, possibles): (7, 3)
+2 nullings: [(14, 'Col2'), (16, 'Col2')]
+Similarity took 0.00099945068359375 seconds
+greedy answers:
+Col1, Col2, Col3
+D, B, E, --id: 15
+A, E, C, --id: 16
+*, *, *, --id: 17
+Score (certains, possibles): (6, 10)
+6 nullings: [(14, 'Col1'), (14, 'Col2'), (14, 'Col3'), (17, 'Col3'), (17, 'Col1'), (17, 'Col2')]
+Greedy took 0.012003183364868164 seconds
+10000 random walks answers:
+Col1, Col2, Col3
+D, B, E, --id: 15
+A, *, C, --id: 16
+A, B, F, --id: 17
+Score (certains, possibles): (7, 3)
+2 nullings: [(16, 'Col2'), (14, 'Col2')]
+10000 random walks took 0.012997627258300781 seconds
+merge greedy answers:
+Col1, Col2, Col3
+D, B, E, --id: 15
+A, *, C, --id: 16
+A, B, F, --id: 17
+Score (certains, possibles): (7, 3)
+2 nullings: [(14, 'Col2'), (16, 'Col2')]
+Merge greedy took 0.0039997100830078125 seconds
+sorted order answers:
+Col1, Col2, Col3
+D, B, E, --id: 15
+A, *, C, --id: 16
+A, B, F, --id: 17
+Score (certains, possibles): (7, 3)
+2 nullings: [(14, 'Col2'), (16, 'Col2')]
+Sorted order took 0.0030007362365722656 seconds
+Starting exhaustive algorithm
+Layer 1
+Layer 2
+Layer 3
+exhaustive answers:
+Col1, Col2, Col3
+D, B, E, --id: 15
+A, *, C, --id: 16
+A, B, F, --id: 17
+Score (certains, possibles): (7, 3)
+2 nullings: [(16, 'Col2'), (14, 'Col2')]
+Exhaustive calculation took 0.10196447372436523 seconds
+total time elapsed for test 6: 0.13796544075012207
+--------------------------------------------------------------------------------------------------------
+test 7
+original table:
+Col1, Col2, Col3
+A, B, C, --id: 14
+D, B, E, --id: 15
+A, E, C, --id: 16
+A, B, F, --id: 17
+alg is ['similarity', 'greedy', 'random walks', 'merge greedy', 'sorted order', 'exhaustive']
+similarity answers:
+Col1, Col2, Col3
+A, *, C, --id: 16
+*, B, *, --id: 17
+Score (certains, possibles): (1, 12)
+6 nullings: [(16, 'Col2'), (14, 'Col2'), (17, 'Col1'), (15, 'Col1'), (17, 'Col3'), (15, 'Col3')]
+Similarity took 0.0010001659393310547 seconds
+greedy answers:
+Col1, Col2, Col3
+A, E, C, --id: 16
+*, *, *, --id: 17
+Score (certains, possibles): (3, 13)
+9 nullings: [(14, 'Col1'), (14, 'Col2'), (14, 'Col3'), (17, 'Col3'), (17, 'Col1'), (17, 'Col2'), (15, 'Col2'), (15, 'Col1'), (15, 'Col3')]
+Greedy took 0.015999317169189453 seconds
+10000 random walks answers:
+Col1, Col2, Col3
+*, *, *, --id: 16
+*, B, F, --id: 17
+Score (certains, possibles): (1, 16)
+10 nullings: [(14, 'Col1'), (17, 'Col1'), (16, 'Col2'), (15, 'Col2'), (16, 'Col3'), (14, 'Col3'), (15, 'Col3'), (14, 'Col2'), (16, 'Col1'), (15, 'Col1')]
+10000 random walks took 0.05600094795227051 seconds
+merge greedy answers:
+Col1, Col2, Col3
+D, B, E, --id: 15
+A, *, *, --id: 17
+Score (certains, possibles): (3, 10)
+5 nullings: [(14, 'Col2'), (16, 'Col2'), (17, 'Col3'), (17, 'Col2'), (16, 'Col3')]
+Merge greedy took 0.016033411026000977 seconds
+sorted order answers:
+Col1, Col2, Col3
+A, E, C, --id: 16
+*, B, *, --id: 17
+Score (certains, possibles): (3, 10)
+6 nullings: [(14, 'Col3'), (15, 'Col1'), (14, 'Col1'), (15, 'Col3'), (17, 'Col3'), (17, 'Col1')]
+Sorted order took 28.1147198677063 seconds
+Starting exhaustive algorithm
+Layer 1
+Layer 2
+Layer 3
+Layer 4
+Layer 5
+Layer 6
+Layer 7
+exhaustive answers:
+Col1, Col2, Col3
+D, B, E, --id: 15
+A, *, *, --id: 17
+Score (certains, possibles): (3, 10)
+5 nullings: [(14, 'Col2'), (16, 'Col2'), (16, 'Col3'), (17, 'Col3'), (17, 'Col2')]
+Col1, Col2, Col3
+A, E, C, --id: 16
+*, B, *, --id: 17
+Score (certains, possibles): (3, 10)
+5 nullings: [(14, 'Col3'), (15, 'Col1'), (15, 'Col3'), (17, 'Col3'), (17, 'Col1')]
+Exhaustive calculation took 402.83464455604553 seconds
+total time elapsed for test 7: 440.5087320804596
