@@ -68,9 +68,8 @@ class Row(Node):
     def get_attributes_set(self):
         attributes_set = set()
         for key, value in self.attributes.items():
-            attributes_set.add(str(key)+str(value))
+            attributes_set.add(str(key)+':'+str(value))
         return attributes_set
-
 
 class Table:
     '''

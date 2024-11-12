@@ -4,10 +4,17 @@ import time
 import random
 import heapq
 import sys
-# import datasketch
+from collections import defaultdict
+
 
 save_output = True
-testing = False
+testing = True
+support_minhashing = True
+
+if support_minhashing:  # this is the only non-default python package
+    from datasketch import MinHash
+
+
 
 if save_output:
     file = open('output.txt', 'a')
@@ -88,8 +95,8 @@ class TableTree():
         self.root = TableTreeNode(table)
 
 # check similarities of 2-row combinations, then merge most similar, repeat
-    def similarity_algorithm(self, desired_size: int, loading_progress = False, make_copy = True): # TODO: vs 'minhash' vs 'minhash lsh'  
-        if make_copy:
+    def similarity_algorithm(self, desired_size: int, loading_progress = False, make_copy = True):
+        if make_copy:       # you can set make copy to false to speed it up if you're not going to be reusing the same table again
             table = copy.deepcopy(self.root.table)
         else:
             table = self.root.table
@@ -101,12 +108,12 @@ class TableTree():
         similarity_heap = []
         
         for i in range(len(table.rows)):
+            row_1 = table.rows[i]
+            row_1_attributes = row_1.get_attributes_set()
+
             for j in range(i+1, len(table.rows)):
-                row_1 = table.rows[i]
                 row_2 = table.rows[j]
                 pair = frozenset([row_1, row_2])
-
-                row_1_attributes = row_1.get_attributes_set()
                 row_2_attributes = row_2.get_attributes_set()
                 intersection = row_1_attributes.intersection(row_2_attributes)
                 union = row_1_attributes.union(row_2_attributes)
@@ -188,6 +195,140 @@ class TableTree():
         # repeat until desired size is reached
         
         return [TableTreeNode(table, nullings)]
+
+
+# check similarities of 2-row combinations, then merge most similar, repeat
+    def similarity_minhash_algorithm(self, desired_size: int, loading_progress = False, make_copy = True):
+        if make_copy:
+            table = copy.deepcopy(self.root.table)
+        else:
+            table = self.root.table
+
+        if loading_progress:
+            print('Calculating initial similarities')
+
+        nullings = [] 
+        similarity_heap = []
+        minhash_dict = defaultdict(lambda: None)
+        
+        for i in range(len(table.rows)):
+            row_1 = table.rows[i]
+            row_1_attributes = row_1.get_attributes_set()
+
+            if minhash_dict[row_1] == None:     # TODO: possible optimization, use MinHash.generator to initialize all minhashes separately before
+                m1 = MinHash()
+                for d in row_1_attributes:
+                    m1.update(d.encode('utf8'))
+                minhash_dict[row_1] = m1
+            for j in range(i+1, len(table.rows)):                
+                row_2 = table.rows[j]
+                pair = frozenset([row_1, row_2])
+                row_2_attributes = row_2.get_attributes_set()
+
+                if minhash_dict[row_2] == None:
+                    m2 = MinHash()
+                    for d in row_2_attributes:
+                        m2.update(d.encode('utf8'))
+                    minhash_dict[row_2] = m2
+
+                m1 = minhash_dict[row_1]
+                m2 = minhash_dict[row_2]
+                if m1 == None or m2 == None:
+                    raise ValueError ('A minhash value is none')
+                jaccard_sim = m1.jaccard(m2)        # minhash estimate of jaccard similarity
+                
+                heapq.heappush(similarity_heap, (-jaccard_sim, pair))
+        
+        columns = table.columns
+        while table.get_size() > desired_size:
+        # find best pair
+            best_pair = heapq.heappop(similarity_heap)[1]
+            rows = []
+            for row in best_pair:
+                rows.append(row)
+
+            row_1 = rows[0]
+            row_2 = rows[1]
+        
+        # merge best pair
+            for column in columns:
+                if row_1.get_value(column) != row_2.get_value(column):
+                    table.make_null_in_place(row_1, column, row_input='object', update = False, merge = False)
+                    table.make_null_in_place(row_2, column, row_input='object', update = False, merge = False)
+                    nullings.extend([(row_1.get_id(), column),(row_2.get_id(), column)]) # append both nulling operation records
+            table.update_all_relationships()
+            table.check_merges()
+
+        # replace old values with new values:
+
+            # determine which row stayed, row 1 or row 2
+            new_row = None
+            for row in table.rows:
+                if row == row_1:
+                    new_row = row_1
+                    old_row = row_2
+                elif row == row_2:
+                    new_row = row_2
+                    old_row = row_1
+            if new_row == None:
+                raise ValueError ('Neither row could be found in table after merge')
+
+            # recalculate minhash value for changed row
+            minhash_dict[old_row] == None
+            m3 = minhash_dict[new_row]
+            m3.clear()
+            row_attributes = new_row.get_attributes_set()
+            for d in row_attributes:
+                m3.update(d.encode('utf8'))
+            minhash_dict[new_row] = m3
+
+
+
+            # go through the list, find those where that row is in pair, recalculate the value
+            
+            to_delete = []
+            # print('sim heap', similarity_heap)
+            for i, element in enumerate(similarity_heap):
+                neg_sim, pair = element
+                replace = False
+                for row in pair:
+                    if row == old_row:  # delete
+                        to_delete.append(i)
+                        # del similarity_heap[i]  <-- can't do this yet, it would mess up the indexes
+                    elif row == new_row:   # replace
+                        replace = True
+                if replace:
+                    # print(table)
+                    rows = []
+                    for row in pair:
+                        rows.append(row)
+                    row_1 = rows[0]
+                    row_2 = rows[1]
+                    row_1_attributes = row_1.get_attributes_set()
+                    row_2_attributes = row_2.get_attributes_set()
+
+                    m1 = minhash_dict[row_1]
+                    m2 = minhash_dict[row_2]
+                    if m1 == None or m2 == None:
+                        raise ValueError ('A minhash value is none')
+                    jaccard_sim = m1.jaccard(m2)        # minhash estimate of jaccard similarity
+
+                    similarity_heap[i] = (-jaccard_sim, pair)
+
+            # print('to delete', to_delete)
+            for index in reversed(to_delete):
+                # print('deleting', index)
+                del similarity_heap[index]
+
+
+            # resort the heap
+            heapq.heapify(similarity_heap) 
+
+        # repeat until desired size is reached
+        
+        return [TableTreeNode(table, nullings)]
+
+
 
     def sorted_order_algorithm(self, desired_size: int, nth = 1, loading_progress = False): # n-th: stop at the n-th valid answer
         # reset children:
@@ -297,7 +438,7 @@ class TableTree():
         return unique_bests
 
     # sorted order but if a merge is found, only continue from there
-    def merge_greedy_algorithm(self, desired_size: int, nth = 1, loading_progress = False):
+    def merge_greedy_algorithm(self, desired_size: int, nth = 1, loading_progress = True):
         # reset children:
         self.root.children = []
 
@@ -319,7 +460,7 @@ class TableTree():
         end_loop = False
 
         if loading_progress:
-            print('Starting sorted order algorithm')
+            print('Starting merge greedy algorithm')
             last_displayed_size = current_size
             print('Starting size:',current_size)
 
@@ -656,7 +797,7 @@ class TableTree():
         return unique_bests
 
 
-def find_answer(table, desired_size, alg = ['similarity', 'greedy','random walks','merge greedy','sorted order','exhaustive'], walks_count = 1, time_to_show = 0, show_answers = True):
+def find_answer(table, desired_size, alg = ['similarity', 'similarity minhash', 'greedy','random walks','merge greedy','sorted order','exhaustive'], walks_count = 1, time_to_show = 0, show_answers = True):
     tree = TableTree(table)
     print('alg is',alg)
     if alg == 'all except exhaustive' or 'similarity' in alg:
@@ -675,6 +816,22 @@ def find_answer(table, desired_size, alg = ['similarity', 'greedy','random walks
         time_similarity = end_similarity - start_similarity
         if time_similarity > time_to_show:
             print('Similarity took', time_similarity,'seconds')
+    if alg == 'all except exhaustive' or 'similarity minhash' in alg:
+        start_similarity_minhash = time.time()
+        if alg == ['similarity minhash']:
+            similarity_minhash_answers = tree.similarity_minhash_algorithm(desired_size, make_copy = False)
+        else:
+            similarity_minhash_answers = tree.similarity_minhash_algorithm(desired_size)
+        end_similarity_minhash = time.time()
+        if show_answers:
+            print('similarity minhash answers:')
+            for answer in similarity_minhash_answers:
+                print(answer)
+                print('Score (certains, possibles):',f'({answer.get_certains()}, {answer.get_exp_possibles()})')
+                print(len(answer.nullings),'nullings:',answer.nullings)
+        time_similarity_minhash = end_similarity_minhash - start_similarity_minhash
+        if time_similarity_minhash > time_to_show:
+            print('Similarity minhash took', time_similarity_minhash,'seconds')            
     if alg == 'all except exhaustive' or 'greedy' in alg:
         start_greedy= time.time()
         greedy_answers = tree.greedy_algorithm(desired_size)
@@ -748,7 +905,7 @@ if testing:
     test_columns = ['Col1','Col2','Col3']
     domains_cardinality = {'Col1':3, 'Col2':3, 'Col3':3, 'Col4':2}
 
-
+    
     print('========================================================================================================')
     print('test 1')
     t1 = Table(test_columns, test_table, {'Col1':3, 'Col2':3, 'Col3':3})
@@ -823,12 +980,32 @@ if testing:
     print('original table:')
     print(t3)
     start = time.time()
-    # find_answer(t3,2, 'all except exhaustive', walks_count=10000)     
-    find_answer(t3,2, walks_count=10000)     
+    find_answer(t3,2, 'all except exhaustive', walks_count=10000)     
+    # find_answer(t3,2, walks_count=10000)     
     # find_answer(t3,2, ['greedy', 'random walks', 'sorted order', 'exhaustive'], walks_count=10000) 
     end = time.time()
     print('total time elapsed for test 7:',str(end-start))  
+    
+    
+    print('--------------------------------------------------------------------------------------------------------')
+    print('test 8')
+    t3 = Table(['Col1','Col2','Col3','Col4'],  [['A','B','C','A'],['D','B','E','A'],['A','E','C','B'],['A','B','F','B'],['D','E','C','A']])      
+    print('original table:')
+    print(t3)
+    start = time.time()
+    find_answer(t3,3, ['similarity', 'similarity minhash', 'greedy','random walks','merge greedy'], walks_count=100000)
+    end = time.time()
+    print('total time elapsed for test 8:',str(end-start))     
 
+    print('--------------------------------------------------------------------------------------------------------')
+    print('test 9')
+    t3 = Table(['Col1','Col2','Col3','Col4','Col5'],  [['A','B','C','A','B'],['D','B','E','A','A'],['A','E','C','B','B'],['A','B','F','B','A'],['D','E','C','A','A']])      
+    print('original table:')
+    print(t3)
+    start = time.time()
+    find_answer(t3,3, ['similarity', 'similarity minhash', 'greedy','random walks'], walks_count=100000)
+    end = time.time()
+    print('total time elapsed for test 9:',str(end-start))     
 
 
 
