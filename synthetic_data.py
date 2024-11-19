@@ -16,7 +16,8 @@ columns_test = True
 domains_test = True
 rows_test = True
 
-
+first_time = time.time()
+print('started testing with synthetic data')
 
 if save_output:
     file = open('synthetic_output.txt', 'a')
@@ -547,7 +548,8 @@ if rows_test:
     plt.close()
 
 
-
-
 if save_output:
     file.close()
+
+last_time = time.time()
+print('ended testing with synthetic data, it took',last_time-first_time,'seconds')
