@@ -80,9 +80,12 @@ class Table:
     - relationships: set of all relationships
     - certain_rels: set of certain relationships
     - possible_rels: set of possible relationships
-    - origin: 'lists', 'row objects', 'json'?? [TODO]
+    - origin: 'lists', 'row objects'
+    - ignore_possibles: bool, True if we only use certain relationship count as score, sets expanded possible relationship count to always be 0
     '''
-    def __init__(self, columns:list, initial_list: list, domains_cardinality = None, origin = 'lists'):
+    def __init__(self, columns:list, initial_list: list, domains_cardinality = None, origin = 'lists', ignore_possibles = False):
+        self.ignore_possibles = ignore_possibles
+        
         self.rows = []
         if origin == 'lists':
             self.columns = columns
@@ -182,6 +185,9 @@ class Table:
         return len(self.possible_rels)
 
     def get_expanded_possible_relationships_count(self, printing = printing_mode):
+        if self.ignore_possibles:
+            return 0
+
          # a relationship is in the form frozenset((Col1,Val1),(Col2,Val2))
 
         unknowns = dict()     # unknowns[frozenset([column, other column])][column] =

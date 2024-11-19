@@ -7,8 +7,8 @@ import sys
 from collections import defaultdict
 
 
-save_output = True
-testing = True
+save_output = False
+testing = False
 support_minhashing = True
 
 if support_minhashing:  # this is the only non-default python package
@@ -55,16 +55,17 @@ class TableTreeNode():
         return self.table.is_same(other.table)
 
     def add_layer(self):
-        for i, current_row in enumerate(self.table.rows):
-            for current_column in self.table.columns:
-                if current_row.get_value(current_column) != '*':
-                    new_table = Table(columns = self.table.columns, initial_list=self.table.rows, domains_cardinality=self.table.domains_cardinality, origin ='row objects')    # 1 min for 3x3
-                    # TODO: possible optimization, keep a set of existing row objects, if the new row already exists from before add a pointer to that instead of copying into a new one, else add to all objects list
-                    new_table.make_null_copying_row(current_row, current_column)
-                    new_nullings = copy.deepcopy(self.nullings)
-                    new_nullings.append((current_row.get_id(), current_column))
-                    new_node = TableTreeNode(new_table, new_nullings)
-                    self.children.append(new_node)
+        if self.children == []:
+            for i, current_row in enumerate(self.table.rows):
+                for current_column in self.table.columns:
+                    if current_row.get_value(current_column) != '*':
+                        new_table = Table(columns = self.table.columns, initial_list=self.table.rows, domains_cardinality=self.table.domains_cardinality, origin ='row objects')    # 1 min for 3x3
+                        # TODO: possible optimization, keep a set of existing row objects, if the new row already exists from before add a pointer to that instead of copying into a new one, else add to all objects list
+                        new_table.make_null_copying_row(current_row, current_column)
+                        new_nullings = copy.deepcopy(self.nullings)
+                        new_nullings.append((current_row.get_id(), current_column))
+                        new_node = TableTreeNode(new_table, new_nullings)
+                        self.children.append(new_node)
 
 
 class NodeScore():
@@ -671,7 +672,7 @@ class TableTree():
                 tree_node.add_layer()
                 current_bests = []
                 if len(tree_node.children) > 0:
-                    for i, child in enumerate(tree_node.children):
+                    for child in tree_node.children:
                         if child.get_size() <= desired_size:    # child is valid
                             certains = child.get_certains()
                             possibles = child.get_exp_possibles()
@@ -715,7 +716,7 @@ class TableTree():
         return unique_bests
 
 
-    def random_walks_algorithm(self, desired_size, walks_count = 1, pruning = True, loading_progress = False):
+    def random_walks_algorithm(self, desired_size, walks_count = 1, pruning = True, loading_progress = False, show_latest_best = True):
         # reset children
         if loading_progress:
             print('Starting random walks')
@@ -727,44 +728,52 @@ class TableTree():
         if self.root.get_size() <= desired_size:
             return [self.root.table]
 
-        new_to_check = [[self.root]]
 
         best_valids = []
         max_certains = 0
         min_possibles = 'inf'
 
-        valid_answer_exists = False
 
         for i in range(walks_count):
 
             if loading_progress:
                 print('Walk',i+1,'out of',walks_count)
 
+            valid_answer_exists = False
+            new_to_check = [[self.root]]
+
+
             while not valid_answer_exists:
                 to_check = random.choice(new_to_check)
                 new_to_check = []
 
+                # print('checking', to_check[0])
 
                 if pruning and min_possibles != 'inf':
                     tree_node = to_check[0]
                     certains = tree_node.get_certains()
                     possibles = tree_node.get_exp_possibles()
                     if certains < max_certains:
+                        if loading_progress:
+                            print ('pruned because of certains')
                         break
                     else:
                         if certains == max_certains and possibles > min_possibles:
+                            if loading_progress:
+                                print ('pruned because of possibles')
                             break
 
                 for tree_node in to_check:     
                     tree_node.add_layer()
                     currents = []
                     if len(tree_node.children) > 0:
-                        for i, child in enumerate(tree_node.children):
+                        for child in tree_node.children:
                             if child.get_size() <= desired_size:    # child is valid
                                 valid_answer_exists = True
                                 certains = child.get_certains()
                                 possibles = child.get_exp_possibles()
                                 if min_possibles == 'inf':
+                                    best_valids = [child]
                                     max_certains = certains
                                     min_possibles = possibles
                                 elif max_certains < certains:
@@ -784,10 +793,17 @@ class TableTree():
                                     # currents.append(child)
                                 currents.append(child)
                     new_to_check.append(currents)
+                if valid_answer_exists:
+                    if loading_progress:
+                        print('better than before')
+                    latest_best_walk = i+1
+    
 
+
+        if pruning and (loading_progress or show_latest_best):
+            print('best walk on walk number', latest_best_walk,'out of',walks_count,'with score','('+str(max_certains)+','+str(min_possibles)+')')
         if len(best_valids) == 1:
             return best_valids
-
         # remove duplicates
         unique_bests = []
         for current_node in best_valids:
@@ -797,9 +813,14 @@ class TableTree():
         return unique_bests
 
 
-def find_answer(table, desired_size, alg = ['similarity', 'similarity minhash', 'greedy','random walks','merge greedy','sorted order','exhaustive'], walks_count = 1, time_to_show = 0, show_answers = True):
+def find_answer(table, desired_size, alg = ['similarity', 'similarity minhash', 'greedy','random walks','merge greedy','sorted order','exhaustive'], walks_count = [2, 10], time_to_show = 0, show_answers = True, show_time = True):
     tree = TableTree(table)
-    print('alg is',alg)
+    answers = defaultdict(lambda: None)
+    scores = defaultdict(lambda: None)
+    times = defaultdict(lambda: None)
+
+    if show_answers:
+        print('alg is',alg)
     if alg == 'all except exhaustive' or 'similarity' in alg:
         start_similarity = time.time()
         if alg == ['similarity']:
@@ -814,8 +835,13 @@ def find_answer(table, desired_size, alg = ['similarity', 'similarity minhash', 
                 print('Score (certains, possibles):',f'({answer.get_certains()}, {answer.get_exp_possibles()})')
                 print(len(answer.nullings),'nullings:',answer.nullings)
         time_similarity = end_similarity - start_similarity
-        if time_similarity > time_to_show:
+        if time_similarity > time_to_show and show_time:
             print('Similarity took', time_similarity,'seconds')
+
+        answers['similarity'] = similarity_answers
+        scores['similarity'] = (similarity_answers[0].get_certains(), similarity_answers[0].get_exp_possibles())
+        times['similarity'] = time_similarity
+
     if alg == 'all except exhaustive' or 'similarity minhash' in alg:
         start_similarity_minhash = time.time()
         if alg == ['similarity minhash']:
@@ -830,8 +856,13 @@ def find_answer(table, desired_size, alg = ['similarity', 'similarity minhash', 
                 print('Score (certains, possibles):',f'({answer.get_certains()}, {answer.get_exp_possibles()})')
                 print(len(answer.nullings),'nullings:',answer.nullings)
         time_similarity_minhash = end_similarity_minhash - start_similarity_minhash
-        if time_similarity_minhash > time_to_show:
-            print('Similarity minhash took', time_similarity_minhash,'seconds')            
+        if time_similarity_minhash > time_to_show and show_time:
+            print('Similarity minhash took', time_similarity_minhash,'seconds')     
+
+        answers['similarity minhash'] = similarity_minhash_answers
+        scores['similarity minhash'] = (similarity_minhash_answers[0].get_certains(), similarity_minhash_answers[0].get_exp_possibles())
+        times['similarity minhash'] = time_similarity_minhash
+
     if alg == 'all except exhaustive' or 'greedy' in alg:
         start_greedy= time.time()
         greedy_answers = tree.greedy_algorithm(desired_size)
@@ -843,21 +874,54 @@ def find_answer(table, desired_size, alg = ['similarity', 'similarity minhash', 
                 print('Score (certains, possibles):',f'({answer.get_certains()}, {answer.get_exp_possibles()})')
                 print(len(answer.nullings),'nullings:',answer.nullings)
         time_greedy = end_greedy - start_greedy
-        if time_greedy > time_to_show:
+        if time_greedy > time_to_show and show_time:
             print('Greedy took', time_greedy,'seconds')
+
+        answers['greedy'] = greedy_answers
+        scores['greedy'] = (greedy_answers[0].get_certains(), greedy_answers[0].get_exp_possibles())
+        times['greedy'] = time_greedy
+
     if alg == 'all except exhaustive' or 'random walks' in alg:
-        start_walks = time.time()
-        walks_answers = tree.random_walks_algorithm(desired_size, walks_count)
-        end_walks = time.time()
-        if show_answers:
-            print(walks_count,'random walks answers:')
-            for answer in walks_answers:
-                print(answer)
-                print('Score (certains, possibles):',f'({answer.get_certains()}, {answer.get_exp_possibles()})')
-                print(len(answer.nullings),'nullings:',answer.nullings)
-        time_walks = end_walks - start_walks
-        if time_walks > time_to_show:
-            print(walks_count,'random walks took', time_walks,'seconds')
+        if type(walks_count) == int:
+            num_walks = 1
+            # print('int')
+            single_walk = True
+        else:
+            num_walks = len(walks_count)
+            # print(num_walks)
+            single_walk = False
+        
+        for i in range(num_walks):
+            start_walks = time.time()
+            if type(walks_count) == int:
+                walks_answers = tree.random_walks_algorithm(desired_size, walks_count)
+            else:
+                walks_answers = tree.random_walks_algorithm(desired_size, walks_count[i])
+            end_walks = time.time()
+            if show_answers:
+                if single_walk:
+                    print(walks_count,'random walks answers:')
+                else:
+                    print(walks_count[i],'random walks answers:')
+                for answer in walks_answers:
+                    print(answer)
+                    print('Score (certains, possibles):',f'({answer.get_certains()}, {answer.get_exp_possibles()})')
+                    print(len(answer.nullings),'nullings:',answer.nullings)
+            time_walks = end_walks - start_walks
+            if time_walks > time_to_show and show_time:
+                if single_walk:
+                    print(walks_count,'random walks took', time_walks,'seconds')
+                else:
+                    print(walks_count[i],'random walks took', time_walks,'seconds')
+            if single_walk:
+                answers['random walks '+str(walks_count)] = walks_answers
+                scores['random walks '+str(walks_count)] = (walks_answers[0].get_certains(), walks_answers[0].get_exp_possibles())
+                times['random walks '+str(walks_count)] = time_walks
+            else:
+                answers['random walks '+str(walks_count[i])] = walks_answers
+                scores['random walks '+str(walks_count[i])] = (walks_answers[0].get_certains(), walks_answers[0].get_exp_possibles())
+                times['random walks '+str(walks_count[i])] = time_walks
+
     if alg == 'all except exhaustive' or 'merge greedy' in alg:
         start_merge_greedy = time.time()
         merge_greedy_answers = tree.merge_greedy_algorithm(desired_size)
@@ -869,8 +933,13 @@ def find_answer(table, desired_size, alg = ['similarity', 'similarity minhash', 
                 print('Score (certains, possibles):',f'({answer.get_certains()}, {answer.get_exp_possibles()})')
                 print(len(answer.nullings),'nullings:',answer.nullings)
         time_merge_greedy = end_merge_greedy - start_merge_greedy
-        if time_merge_greedy > time_to_show:
-            print('Merge greedy took', time_merge_greedy,'seconds')            
+        if time_merge_greedy > time_to_show and show_time:
+            print('Merge greedy took', time_merge_greedy,'seconds')         
+
+        answers['merge greedy'] = merge_greedy_answers
+        scores['merge greedy'] = (merge_greedy_answers[0].get_certains(), merge_greedy_answers[0].get_exp_possibles())
+        times['merge greedy'] = time_merge_greedy
+
     if alg == 'all except exhaustive' or 'sorted order' in alg:
         start_sorted_order = time.time()
         sorted_order_answers = tree.sorted_order_algorithm(desired_size)
@@ -882,8 +951,13 @@ def find_answer(table, desired_size, alg = ['similarity', 'similarity minhash', 
                 print('Score (certains, possibles):',f'({answer.get_certains()}, {answer.get_exp_possibles()})')
                 print(len(answer.nullings),'nullings:',answer.nullings)
         time_sorted_order = end_sorted_order - start_sorted_order
-        if time_sorted_order > time_to_show:
+        if time_sorted_order > time_to_show and show_time:
             print('Sorted order took', time_sorted_order,'seconds')
+
+        answers['sorted order'] = sorted_order_answers
+        scores['sorted order'] = (sorted_order_answers[0].get_certains(), sorted_order_answers[0].get_exp_possibles())
+        times['sorted order'] = time_sorted_order
+
     if alg != 'all except exhaustive' and 'exhaustive' in alg:
     # if True:
         start_comp = time.time()
@@ -896,8 +970,14 @@ def find_answer(table, desired_size, alg = ['similarity', 'similarity minhash', 
                 print('Score (certains, possibles):',f'({answer.get_certains()}, {answer.get_exp_possibles()})')
                 print(len(answer.nullings),'nullings:',answer.nullings)
         time_comp = end_comp - start_comp
-        if time_comp > time_to_show:
-            print('Exhaustive calculation took',time_comp,'seconds')            
+        if time_comp > time_to_show and show_time:
+            print('Exhaustive calculation took',time_comp,'seconds')  
+
+        answers['exhaustive'] = comp_answers
+        scores['exhaustive'] = (comp_answers[0].get_certains(), comp_answers[0].get_exp_possibles())
+        times['exhaustive'] = time_comp       
+
+    return (answers, scores, times)   
 
 if testing:
 
@@ -916,7 +996,7 @@ if testing:
     print('test 2')
     t2 = Table(test_columns,  [['A','B','C'],['A','C','B']], domains_cardinality)
     print(t2)
-    find_answer(t2,1, walks_count = 20)
+    find_answer(t2,1, walks_count = 15)
 
 
     print('-----------------------------------------------')
@@ -937,7 +1017,7 @@ if testing:
     print(t3)
     start = time.time()
     # find_answer(t3,2,'all except exhaustive', walks_count=4)           # sorted 3s, exh 21s, same answer
-    find_answer(t3,2, 'all except exhaustive', walks_count= 10000)           #   best answer is 1x (7,20)
+    find_answer(t3,2, 'all except exhaustive', walks_count= 10)           #   best answer is 1x (7,20)
 
 
     end = time.time()
@@ -950,16 +1030,15 @@ if testing:
     print('original table:')
     print(t3)
     start = time.time()
-    find_answer(t3,2, 'all except exhaustive', walks_count=10000)                    # n=1 sorted took 843 sec, got (3,14)
-    # find_answer(t3,2, ['greedy', 'random walks', 'exhaustive'], walks_count=10000)          
-    # find_answer(t3,2, ['greedy', 'random walks', 'sorted order', 'exhaustive'], walks_count=100000)          
+    find_answer(t3,2, 'all except exhaustive', walks_count=10)                    # n=1 sorted took 843 sec, got (3,14)
+    # find_answer(t3,2, ['greedy', 'random walks', 'exhaustive'], walks_count=10)          
+    # find_answer(t3,2, ['greedy', 'random walks', 'sorted order', 'exhaustive'], walks_count=10)          
 
     end = time.time()
     print('total time elapsed for test 5:',str(end-start))     
 
     # greedy took 0.03s and got 1x(3,24), [ACB, ***]
-    # 100 walks took 0.13s and got 1x(3,24), [ACB, ***]
-    # 10000 walks took 0.05s and got same
+
     # sorted order took 746s with list and 32s with heap and got 1x(3,14), [CBA, A**]
         # 6 nullings: [(13, 'Col3'), (10, 'Col2'), (13, 'Col2'), (11, 'Col3'), (11, 'Col2'), (10, 'Col3')]
     # exhaustive took 357s, 308s, 327s and got 1x(3,14), [CBA, A**]
@@ -972,7 +1051,7 @@ if testing:
     print('original table:')
     print(t3)
     start = time.time()
-    find_answer(t3,3, walks_count=10000)
+    find_answer(t3,3, walks_count=10)
     end = time.time()
     print('total time elapsed for test 6:',str(end-start))            
     print('--------------------------------------------------------------------------------------------------------')
@@ -980,9 +1059,9 @@ if testing:
     print('original table:')
     print(t3)
     start = time.time()
-    find_answer(t3,2, 'all except exhaustive', walks_count=10000)     
-    # find_answer(t3,2, walks_count=10000)     
-    # find_answer(t3,2, ['greedy', 'random walks', 'sorted order', 'exhaustive'], walks_count=10000) 
+    find_answer(t3,2, 'all except exhaustive', walks_count=10)     
+    # find_answer(t3,2, walks_count=10)     
+    # find_answer(t3,2, ['greedy', 'random walks', 'sorted order', 'exhaustive'], walks_count=10) 
     end = time.time()
     print('total time elapsed for test 7:',str(end-start))  
     
@@ -993,7 +1072,7 @@ if testing:
     print('original table:')
     print(t3)
     start = time.time()
-    find_answer(t3,3, ['similarity', 'similarity minhash', 'greedy','random walks','merge greedy'], walks_count=100000)
+    find_answer(t3,3, ['similarity', 'similarity minhash', 'greedy','random walks','merge greedy'], walks_count=10)
     end = time.time()
     print('total time elapsed for test 8:',str(end-start))     
 
@@ -1003,7 +1082,7 @@ if testing:
     print('original table:')
     print(t3)
     start = time.time()
-    find_answer(t3,3, ['similarity', 'similarity minhash', 'greedy','random walks'], walks_count=100000)
+    find_answer(t3,3, ['similarity', 'similarity minhash', 'greedy','random walks'], walks_count=10)
     end = time.time()
     print('total time elapsed for test 9:',str(end-start))     
 
