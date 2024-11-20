@@ -403,6 +403,7 @@ class Table:
             if unique:
                 new_rows.append(current_row)
         self.rows = new_rows
+        # print('merged', merge_count)
         return merge_count
 
     def is_same(self, other_table):

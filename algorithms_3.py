@@ -105,6 +105,9 @@ class TableTree():
         if loading_progress:
             print('Calculating initial similarities')
 
+        # remove initial duplicates
+        table.check_merges()
+
         nullings = [] 
         similarity_heap = []
         
@@ -122,6 +125,9 @@ class TableTree():
                 
                 heapq.heappush(similarity_heap, (-jaccard_sim, pair))
         
+        if loading_progress:
+            print('pairing and merging')
+
         columns = table.columns
         while table.get_size() > desired_size:
         # find best pair
@@ -132,6 +138,8 @@ class TableTree():
 
             row_1 = rows[0]
             row_2 = rows[1]
+            # print('row_1',row_1, row_1.get_id())
+            # print('row_2',row_2, row_2.get_id())
         
         # merge best pair
             for column in columns:
@@ -140,32 +148,41 @@ class TableTree():
                     table.make_null_in_place(row_2, column, row_input='object', update = False, merge = False)
                     nullings.extend([(row_1.get_id(), column),(row_2.get_id(), column)]) # append both nulling operation records
             table.update_all_relationships()
+            # if row_1.is_same(row_2):
+            #     print('should be same')
             table.check_merges()
 
         # replace old values with new values:
 
             # determine which row stayed, row 1 or row 2
             new_row = None
+            # print('row_1',row_1, row_1.get_id())
+            # print('row_2',row_2, row_2.get_id())
+            # print(table)
+            both_deleted = False
             for row in table.rows:
-                if row == row_1:
+                if row.get_id() == row_1.get_id():
                     new_row = row_1
                     old_row = row_2
-                elif row == row_2:
+                elif row.get_id() == row_2.get_id():
                     new_row = row_2
                     old_row = row_1
             if new_row == None:
-                raise ValueError ('Neither row could be found in table after merge')
+                both_deleted = True
+                # print('Neither row could be found in table after merge')
 
             # go through the list, find those where that row is in pair, recalculate the value
             
-
             to_delete = []
             # print('sim heap', similarity_heap)
             for i, element in enumerate(similarity_heap):
                 neg_sim, pair = element
                 replace = False
                 for row in pair:
-                    if row == old_row:  # delete
+                    if both_deleted:
+                        if row == row_1 or row == row_2:
+                            to_delete.append(i)
+                    elif row == old_row:  # delete
                         to_delete.append(i)
                         # del similarity_heap[i]  <-- can't do this yet, it would mess up the indexes
                     elif row == new_row:   # replace
@@ -204,6 +221,12 @@ class TableTree():
             table = copy.deepcopy(self.root.table)
         else:
             table = self.root.table
+
+        # remove initial duplicates
+        table.check_merges()
+
+        if table.get_size() <= desired_size:
+            return TableTreeNode(table, nullings)
 
         if loading_progress:
             print('Calculating initial similarities')
@@ -264,6 +287,7 @@ class TableTree():
 
             # determine which row stayed, row 1 or row 2
             new_row = None
+            both_deleted = False
             for row in table.rows:
                 if row == row_1:
                     new_row = row_1
@@ -272,16 +296,21 @@ class TableTree():
                     new_row = row_2
                     old_row = row_1
             if new_row == None:
-                raise ValueError ('Neither row could be found in table after merge')
+                both_deleted = True
+                # print('Neither row could be found in table after merge')
 
             # recalculate minhash value for changed row
-            minhash_dict[old_row] == None
-            m3 = minhash_dict[new_row]
-            m3.clear()
-            row_attributes = new_row.get_attributes_set()
-            for d in row_attributes:
-                m3.update(d.encode('utf8'))
-            minhash_dict[new_row] = m3
+            if both_deleted:
+                minhash_dict[row_1] == None
+                minhash_dict[row_2] == None
+            else:
+                minhash_dict[old_row] == None
+                m3 = minhash_dict[new_row]
+                m3.clear()
+                row_attributes = new_row.get_attributes_set()
+                for d in row_attributes:
+                    m3.update(d.encode('utf8'))
+                minhash_dict[new_row] = m3
 
 
 
@@ -293,7 +322,10 @@ class TableTree():
                 neg_sim, pair = element
                 replace = False
                 for row in pair:
-                    if row == old_row:  # delete
+                    if both_deleted:
+                        if row == row_1 or row == row_2:
+                            to_delete.append(i)
+                    elif row == old_row:  # delete
                         to_delete.append(i)
                         # del similarity_heap[i]  <-- can't do this yet, it would mess up the indexes
                     elif row == new_row:   # replace
