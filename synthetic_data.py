@@ -10,18 +10,20 @@ from matplotlib.ticker import MaxNLocator
 
 ignore_possibles = False        # if true, only use certain relationships
 save_output = False
-save_graphs = True
+save_graphs = False
 show_graphs = True
 
 # enable/disable testing some aspects
-single_table_test = False
+single_table_test = True
 random_walks_test = False
-columns_test = True
+columns_test = False
 domains_test = False
 rows_test = False
 similarity_test = False
 
-num_of_tries = 2    # run each test this many times and take the avg result
+num_of_tries = 1    # run each test this many times (3) and take the avg result
+
+#TODO: 1 tim vs many, drop first mayb
 
 first_time = time.time()
 print('started testing with synthetic data')
@@ -234,7 +236,7 @@ if random_walks_test:
     if num_of_tries == 1:
         plt.ylabel('Score')
     else:
-        plt.ylabel('Average Score from',num_of_tries,'tables')
+        plt.ylabel('Average Score from '+str(num_of_tries)+' tables')
     plt.title('Random Walks quality')
 
     plt.xticks(rotation=20, fontsize=9) 
@@ -261,7 +263,7 @@ if random_walks_test:
     if num_of_tries == 1:
         plt.ylabel('Time')
     else:
-        plt.ylabel('Average Time from',num_of_tries,'tables')
+        plt.ylabel('Average Time from '+str(num_of_tries)+' tables')
     plt.title('Random Walks performance')
 
     plt.xticks(rotation=20, fontsize=9) 
@@ -285,7 +287,7 @@ if random_walks_test:
 # Changing number of columns
 if columns_test:
     test_columns = [2,3,4] 
-    # test_columns = [2,3,4,5,7,9]
+    # test_columns = [2,3,4,5,7,9]  # full
     algs = ['similarity', 'similarity minhash', 'greedy','random walks','merge greedy']
     # algs = ['similarity', 'similarity minhash', 'greedy','random walks','merge greedy','sorted order','exhaustive']
     walks_count = [10]
@@ -307,6 +309,7 @@ if columns_test:
         k_dict = defaultdict(lambda:0)
 
         for j, col_num in enumerate(test_columns):
+            print('starting columns test with', col_num, 'cols')
             table = generate_table(rows_num, col_num, domain_size)
             answers, scores, times = find_answer(table, desired_size, algs, walks_count, show_answers=False)
         
@@ -352,7 +355,7 @@ if columns_test:
     if num_of_tries == 1:
         plt.ylabel('Score')
     else:
-        plt.ylabel('Average Score from',num_of_tries,'tables')
+        plt.ylabel('Average Score from '+str(num_of_tries)+' tables')
     plt.title('Score as columns increase')
 
     plt.legend()
@@ -380,7 +383,7 @@ if columns_test:
     if num_of_tries == 1:
         plt.ylabel('Time')
     else:
-        plt.ylabel('Average Time from',num_of_tries,'tables')
+        plt.ylabel('Average Time from '+str(num_of_tries)+' tables')
     plt.title('Time as columns increase')
 
     plt.legend()
@@ -409,7 +412,7 @@ if columns_test:
     if num_of_tries == 1:
         plt.ylabel('Log10(Time)')
     else:
-        plt.ylabel('Average Log10(Time) from',num_of_tries,'tables')
+        plt.ylabel('Average Log10(Time) from '+str(num_of_tries)+' tables')
     plt.title('Log Time as columns increase')
 
     plt.legend()
@@ -435,10 +438,10 @@ if columns_test:
 
 # Changing size of domains
 if domains_test:
-    # test_domains = [2,3,4,5] #
-    test_domains = [2,3,4,5,7,9]
-    # algs = ['similarity', 'similarity minhash', 'greedy','random walks','merge greedy']
-    algs = ['similarity', 'similarity minhash', 'greedy','random walks','merge greedy','sorted order','exhaustive']
+    test_domains = [2,3,4] 
+    # test_domains = [2,3,4,5,7,9]  # full
+    algs = ['similarity', 'similarity minhash', 'greedy','random walks','merge greedy']
+    # algs = ['similarity', 'similarity minhash', 'greedy','random walks','merge greedy','sorted order','exhaustive']
     walks_count = [10]
     rows_num = 4
     columns_num = 4
@@ -453,27 +456,47 @@ if domains_test:
     labels = defaultdict(list)
     lines = []
 
-    for j, dom_num in enumerate(categories):
-        table = generate_table(rows_num, columns_num, domain_size = dom_num)
-        answers, scores, times = find_answer(table, desired_size, algs, walks_count, show_answers=False)
-        for alg in algs:
-            if 'random walks' in alg:
-                for i in range(len(walks_count)):
-                    alg = 'random walks ' + str(walks_count[i])
-                    score_values[alg].append(scores[alg][0])
-                    labels[alg].append(scores[alg][1])
-                    time_values[alg].append(times[alg])
-                    if j == 0:
-                        lines.append(alg)
-            else:
-                score_values[alg].append(scores[alg][0])
-                labels[alg].append(scores[alg][1])
-                time_values[alg].append(times[alg])
-                if j == 0:
-                    lines.append(alg)
+    for t in range(num_of_tries):
+        k_dict = defaultdict(lambda:0)
+
+        for j, dom_num in enumerate(categories):
+            table = generate_table(rows_num, columns_num, domain_size = dom_num)
+            answers, scores, times = find_answer(table, desired_size, algs, walks_count, show_answers=False)
+            
+            for alg in algs:
+                if 'random walks' in alg:
+                    for i in range(len(walks_count)):
+                        alg = 'random walks ' + str(walks_count[i])
+                        if t == 0:
+                            score_values[alg].append(scores[alg][0])
+                            labels[alg].append(scores[alg][1])
+                            time_values[alg].append(times[alg])
+                            if j == 0:
+                                lines.append(alg)
+                        else:
+                            score_values[alg][k_dict[alg]] += scores[alg][0]
+                            labels[alg][k_dict[alg]] += scores[alg][1]
+                            time_values[alg][k_dict[alg]] += times[alg]
+                            k_dict[alg] += 1
+                else:
+                    if t == 0:
+                        score_values[alg].append(scores[alg][0])
+                        labels[alg].append(scores[alg][1])
+                        time_values[alg].append(times[alg])
+                        if j == 0:
+                            lines.append(alg)
+                    else:
+                        score_values[alg][k_dict[alg]] += scores[alg][0]
+                        labels[alg][k_dict[alg]] += scores[alg][1]
+                        time_values[alg][k_dict[alg]] += times[alg]
+                        k_dict[alg] += 1
 
     plt.figure()
     for alg in lines:
+        for k in range(len(score_values[alg])):
+            score_values[alg][k] = score_values[alg][k]/num_of_tries
+            time_values[alg][k] = time_values[alg][k]/num_of_tries
+            labels[alg][k] = labels[alg][k]/num_of_tries
         print('domains',categories, score_values[alg], str(alg))
         plt.plot(categories, score_values[alg], label=str(alg))
 
@@ -481,7 +504,7 @@ if domains_test:
     if num_of_tries == 1:
         plt.ylabel('Score')
     else:
-        plt.ylabel('Average Score from',num_of_tries,'tables')
+        plt.ylabel('Average Score from '+str(num_of_tries)+' tables')
     plt.title('Score as domains increase')
 
     plt.legend()
@@ -509,7 +532,7 @@ if domains_test:
     if num_of_tries == 1:
         plt.ylabel('Time')
     else:
-        plt.ylabel('Average Time from',num_of_tries,'tables')
+        plt.ylabel('Average Time from '+str(num_of_tries)+' tables')
     plt.title('Time as domains increase')
 
     plt.legend()
@@ -535,7 +558,7 @@ if domains_test:
     if num_of_tries == 1:
         plt.ylabel('Log10(Time)')
     else:
-        plt.ylabel('Average Log10(Time) from',num_of_tries,'tables')
+        plt.ylabel('Average Log10(Time) from '+str(num_of_tries)+' tables')
     plt.title('Log Time as domains increase')
 
     plt.legend()
@@ -558,17 +581,17 @@ if domains_test:
 
 
 # Changing number of rows
-
 if rows_test:
-    # test_rows = [3,4,5,6] 
-    test_rows = [3,4,5,6,8,10,20]     
+    test_rows = [3,4,5,6] 
+    # test_rows = [3,4,5,6,8,10,20]     
     algs = ['similarity', 'similarity minhash', 'greedy','random walks','merge greedy']
     # algs = ['similarity', 'similarity minhash', 'greedy','random walks','merge greedy','sorted order','exhaustive']
     # algs = ['similarity', 'similarity minhash']#, 'greedy']
     walks_count = [10]
     columns_num = 4
-    desired_size = 8
     domain_size = 4
+    desired_size = 2
+    
 
     print('testing rows with',test_rows,'rows,',columns_num,'columns, domain size',domain_size, 'and desired size',desired_size)
 
@@ -579,28 +602,48 @@ if rows_test:
     labels = defaultdict(list)
     lines = []
 
-    for j, rows_num in enumerate(categories):
-        print('starting rows test with', rows_num, 'rows')
-        table = generate_table(rows_num, columns_num, domain_size)
-        answers, scores, times = find_answer(table, desired_size, algs, walks_count, show_answers=False)
-        for alg in algs:
-            if 'random walks' in alg:
-                for i in range(len(walks_count)):
-                    alg = 'random walks ' + str(walks_count[i])
-                    score_values[alg].append(scores[alg][0])
-                    labels[alg].append(scores[alg][1])
-                    time_values[alg].append(times[alg])
-                    if j == 0:
-                        lines.append(alg)
-            else:
-                score_values[alg].append(scores[alg][0])
-                labels[alg].append(scores[alg][1])
-                time_values[alg].append(times[alg])
-                if j == 0:
-                    lines.append(alg)
+    for t in range(num_of_tries):
+        k_dict = defaultdict(lambda:0)
+
+        for j, rows_num in enumerate(categories):
+            print('starting rows test with', rows_num, 'rows')
+            table = generate_table(rows_num, columns_num, domain_size)
+            answers, scores, times = find_answer(table, desired_size, algs, walks_count, show_answers=False)
+            
+            for alg in algs:
+                if 'random walks' in alg:
+                    for i in range(len(walks_count)):
+                        alg = 'random walks ' + str(walks_count[i])
+                        if t == 0:
+                                score_values[alg].append(scores[alg][0])
+                                labels[alg].append(scores[alg][1])
+                                time_values[alg].append(times[alg])
+                                if j == 0:
+                                    lines.append(alg)
+                        else:
+                            score_values[alg][k_dict[alg]] += scores[alg][0]
+                            labels[alg][k_dict[alg]] += scores[alg][1]
+                            time_values[alg][k_dict[alg]] += times[alg]
+                            k_dict[alg] += 1
+                else:
+                    if t == 0:
+                        score_values[alg].append(scores[alg][0])
+                        labels[alg].append(scores[alg][1])
+                        time_values[alg].append(times[alg])
+                        if j == 0:
+                            lines.append(alg)
+                    else:
+                        score_values[alg][k_dict[alg]] += scores[alg][0]
+                        labels[alg][k_dict[alg]] += scores[alg][1]
+                        time_values[alg][k_dict[alg]] += times[alg]
+                        k_dict[alg] += 1
 
     plt.figure()
     for alg in lines:
+        for k in range(len(score_values[alg])):
+            score_values[alg][k] = score_values[alg][k]/num_of_tries
+            time_values[alg][k] = time_values[alg][k]/num_of_tries
+            labels[alg][k] = labels[alg][k]/num_of_tries
         print('rows',categories, score_values[alg], str(alg))
         plt.plot(categories, score_values[alg], label=str(alg))
 
@@ -608,7 +651,7 @@ if rows_test:
     if num_of_tries == 1:
         plt.ylabel('Score')
     else:
-        plt.ylabel('Average Score from',num_of_tries,'tables')
+        plt.ylabel('Average Score from '+str(num_of_tries)+' tables')
     plt.title('Score as rows increase')
 
     plt.legend()
@@ -636,7 +679,7 @@ if rows_test:
     if num_of_tries == 1:
         plt.ylabel('Time')
     else:
-        plt.ylabel('Average Time from',num_of_tries,'tables')
+        plt.ylabel('Average Time from '+str(num_of_tries)+' tables')
     plt.title('Time as rows increase')
 
     plt.legend()
@@ -662,7 +705,7 @@ if rows_test:
     if num_of_tries == 1:
         plt.ylabel('Log10(Time)')
     else:
-        plt.ylabel('Average Log10(Time) from',num_of_tries,'tables')
+        plt.ylabel('Average Log10(Time) from '+str(num_of_tries)+' tables')
     plt.title('Log Time as rows increase')
 
     plt.legend()
@@ -686,14 +729,14 @@ if rows_test:
 if similarity_test:
     # test_rows = [3,4,5,6] 
     # test_rows = [3,4,5,6,8,10,20]     
-    test_rows = [10,100,1000,10000,100000,1000000]
+    test_rows = [10,50,100,200,300,500]#,1000,10000] # 100: 0.46s/.56s, 1000: 268s/263s, 10000: 13035s/?s
     # algs = ['similarity', 'similarity minhash', 'greedy','random walks','merge greedy']
     # algs = ['similarity', 'similarity minhash', 'greedy','random walks','merge greedy','sorted order','exhaustive']
     algs = ['similarity', 'similarity minhash']#, 'greedy'] #greedy should stop at 100
     walks_count = [10]
     columns_num = 5
     desired_size = 8
-    domain_size = 10
+    domain_size = 5
     # domain_size = 1
 
     print('testing similarity with',test_rows,'rows,',columns_num,'columns, domain size',domain_size, 'and desired size',desired_size)
@@ -705,28 +748,48 @@ if similarity_test:
     labels = defaultdict(list)
     lines = []
 
-    for j, rows_num in enumerate(categories):
-        print('starting rows test with', rows_num, 'rows')
-        table = generate_table(rows_num, columns_num, domain_size)
-        answers, scores, times = find_answer(table, desired_size, algs, walks_count, show_answers=False)
-        for alg in algs:
-            if 'random walks' in alg:
-                for i in range(len(walks_count)):
-                    alg = 'random walks ' + str(walks_count[i])
-                    score_values[alg].append(scores[alg][0])
-                    labels[alg].append(scores[alg][1])
-                    time_values[alg].append(times[alg])
-                    if j == 0:
-                        lines.append(alg)
-            else:
-                score_values[alg].append(scores[alg][0])
-                labels[alg].append(scores[alg][1])
-                time_values[alg].append(times[alg])
-                if j == 0:
-                    lines.append(alg)
+    for t in range(num_of_tries):
+        k_dict = defaultdict(lambda:0)
+
+        for j, rows_num in enumerate(categories):
+            print('starting rows test with', rows_num, 'rows')
+            table = generate_table(rows_num, columns_num, domain_size)
+            answers, scores, times = find_answer(table, desired_size, algs, walks_count, show_answers=False)
+            
+            for alg in algs:
+                if 'random walks' in alg:
+                    for i in range(len(walks_count)):
+                        alg = 'random walks ' + str(walks_count[i])
+                        if t == 0:
+                            score_values[alg].append(scores[alg][0])
+                            labels[alg].append(scores[alg][1])
+                            time_values[alg].append(times[alg])
+                            if j == 0:
+                                lines.append(alg)
+                        else:
+                            score_values[alg][k_dict[alg]] += scores[alg][0]
+                            labels[alg][k_dict[alg]] += scores[alg][1]
+                            time_values[alg][k_dict[alg]] += times[alg]
+                            k_dict[alg] += 1
+                else:
+                    if t == 0:
+                        score_values[alg].append(scores[alg][0])
+                        labels[alg].append(scores[alg][1])
+                        time_values[alg].append(times[alg])
+                        if j == 0:
+                            lines.append(alg)
+                    else:
+                        score_values[alg][k_dict[alg]] += scores[alg][0]
+                        labels[alg][k_dict[alg]] += scores[alg][1]
+                        time_values[alg][k_dict[alg]] += times[alg]
+                        k_dict[alg] += 1
 
     plt.figure()
     for alg in lines:
+        for k in range(len(score_values[alg])):
+            score_values[alg][k] = score_values[alg][k]/num_of_tries
+            time_values[alg][k] = time_values[alg][k]/num_of_tries
+            labels[alg][k] = labels[alg][k]/num_of_tries
         print('rows',categories, score_values[alg], str(alg))
         plt.plot(categories, score_values[alg], label=str(alg))
 
@@ -734,7 +797,7 @@ if similarity_test:
     if num_of_tries == 1:
         plt.ylabel('Score')
     else:
-        plt.ylabel('Average Score from',num_of_tries,'tables')
+        plt.ylabel('Average Score from '+str(num_of_tries)+' tables')
     plt.title('Score as rows increase')
 
     plt.legend()
@@ -762,7 +825,7 @@ if similarity_test:
     if num_of_tries == 1:
         plt.ylabel('Time')
     else:
-        plt.ylabel('Average Time from',num_of_tries,'tables')
+        plt.ylabel('Average Time from '+str(num_of_tries)+' tables')
     plt.title('Time as rows increase')
 
     plt.legend()
@@ -788,7 +851,7 @@ if similarity_test:
     if num_of_tries == 1:
         plt.ylabel('Log10(Time)')
     else:
-        plt.ylabel('Average Log10(Time) from',num_of_tries,'tables')
+        plt.ylabel('Average Log10(Time) from '+str(num_of_tries)+' tables')
     plt.title('Log Time as rows increase')
 
     plt.legend()
