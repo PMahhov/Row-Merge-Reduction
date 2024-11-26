@@ -108,6 +108,9 @@ class TableTree():
         # remove initial duplicates
         table.check_merges()
 
+        if table.get_size() <= desired_size:
+            return [TableTreeNode(table, nullings = [])]
+
         nullings = [] 
         similarity_heap = []
         
@@ -226,7 +229,7 @@ class TableTree():
         table.check_merges()
 
         if table.get_size() <= desired_size:
-            return TableTreeNode(table, nullings)
+            return [TableTreeNode(table, nullings = [])]
 
         if loading_progress:
             print('Calculating initial similarities')
@@ -855,10 +858,11 @@ def find_answer(table, desired_size, alg = ['similarity', 'similarity minhash', 
         print('alg is',alg)
     if alg == 'all except exhaustive' or 'similarity' in alg:
         start_similarity = time.time()
-        if alg == ['similarity']:
-            similarity_answers = tree.similarity_algorithm(desired_size, make_copy = False)
-        else:
-            similarity_answers = tree.similarity_algorithm(desired_size)
+        # if alg == ['similarity']:
+        #     similarity_answers = tree.similarity_algorithm(desired_size, make_copy = False)
+        # else:
+        #     similarity_answers = tree.similarity_algorithm(desired_size)
+        similarity_answers = tree.similarity_algorithm(desired_size)
         end_similarity = time.time()
         if show_answers:
             print('similarity answers:')
@@ -876,10 +880,11 @@ def find_answer(table, desired_size, alg = ['similarity', 'similarity minhash', 
 
     if alg == 'all except exhaustive' or 'similarity minhash' in alg:
         start_similarity_minhash = time.time()
-        if alg == ['similarity minhash']:
-            similarity_minhash_answers = tree.similarity_minhash_algorithm(desired_size, make_copy = False)
-        else:
-            similarity_minhash_answers = tree.similarity_minhash_algorithm(desired_size)
+        # if alg == ['similarity minhash']:
+        #     similarity_minhash_answers = tree.similarity_minhash_algorithm(desired_size, make_copy = False)
+        # else:
+        #     similarity_minhash_answers = tree.similarity_minhash_algorithm(desired_size)
+        similarity_minhash_answers = tree.similarity_minhash_algorithm(desired_size)
         end_similarity_minhash = time.time()
         if show_answers:
             print('similarity minhash answers:')
