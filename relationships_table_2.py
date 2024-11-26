@@ -15,9 +15,8 @@ class Row(Node):
     '''
     - id: id
     - label: unused
-    - order: if original, then sequence number of creation (int), otherwise None
+    - order: sequence number of creation (int)
     - attributes: dict of column:value
-    - original_attributes? [not implemented yet]
     - relationships: list of set((Col1,Val1),(Col2,Val2))
     
     '''
@@ -127,7 +126,7 @@ class Table:
         for row in self.rows:
             row_values = []
             for column in self.columns:
-                row_values.append(row.attributes[column])
+                row_values.append(str(row.attributes[column]))
             row_values.append('--id: '+str(row.get_id()))       # show row id as well
             row_strs.append(', '.join(row_values))
         return f'{column_header}\n' + '\n'.join(row_strs)
@@ -141,7 +140,9 @@ class Table:
     #                                 attributes=node_data["attribute_data"])
     #             self.add_node(new_node)        
 
-    def create_row(self, new_row, order):
+    def create_row(self, new_row, order = None):
+        if order == None:
+            order = len(self.rows)
         row_object = Row(order)
         if len(new_row) != len(self.columns):
             raise ValueError('Added row length does not match the number of columns')
@@ -149,6 +150,19 @@ class Table:
             row_object.set_value(self.columns[i], value)
         self.rows.append(row_object)
         self.rows_dict[row_object.get_id()] = row_object
+
+    def add_column(self, column_name, column_contents: list, column_domain = None):
+        self.columns.append(column_name)
+        
+        for i, row in enumerate(self.rows):
+            row.set_value(column_name, column_contents[i])
+
+        if column_domain == None:
+            column_domain = len(set(column_contents))
+        else:
+            self.domains_cardinality[column_name] = column_domain
+
+        self.update_all_relationships()
 
     def remove_row(self, row):
         self.rows.remove(row)
@@ -572,3 +586,10 @@ if testing:
 # print(t12)
 # print(t12.get_expanded_possible_relationships_count())
 # print(t12.get_certain_relationships_count())
+
+# t13 = Table(test_columns, [['A','B','C'],['A','C','B'],['C','B','A']], domains_cardinality)
+# print(t13, t13.get_certain_relationships_count())
+# t13.add_column('ColNew',[1,2,3])
+# print(t13, t13.get_certain_relationships_count())
+# t13.create_row([4,5,6,7])
+# print(t13, t13.get_certain_relationships_count())
