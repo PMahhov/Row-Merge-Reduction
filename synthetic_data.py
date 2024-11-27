@@ -18,12 +18,13 @@ show_graphs = True
 
 # enable/disable testing some aspects
 single_table_test = False
-random_walks_test = True
-columns_test = True
-domains_test = True
-rows_test = True
-similarity_test = True
-similarity_test_2 = True
+random_walks_test = False
+columns_test = False
+domains_test = False
+rows_test = False
+similarity_test = False
+similarity_test_2 = False
+sim_columns_test = True
 
 num_of_tries = 3    # run each test this many times (ex: 3) and take the avg result
 similar_tables = True       # if true, add columns or rows instead of making completely new table in sequence
@@ -161,7 +162,7 @@ if single_table_test:
         plt.show()
 
     if save_graphs:
-        plt.savefig('quality_4-3-4-2.png')
+        plt.savefig('./images/quality_4-3-4-2.png')
     plt.close()
 
 
@@ -181,7 +182,7 @@ if single_table_test:
     plt.tight_layout()
 
     if save_graphs:
-        plt.savefig('performance_4-3-4-2.png')
+        plt.savefig('./images/performance_4-3-4-2.png')
 
     if show_graphs:
         plt.show()
@@ -189,6 +190,7 @@ if single_table_test:
     plt.close()
 
 
+#random walks test 3x3
 if random_walks_test:
     # Random walks
 
@@ -196,9 +198,9 @@ if random_walks_test:
 
     walks_count = [1,2, 3, 4, 5, 6, 7, 8, 9, 10, 15, 20, 30, 40, 50]
     # walks_count = [1, 2, 3]
-    rows_num = 5
-    columns_num = 5
-    domain_size = 5
+    rows_num = 3
+    columns_num = 3
+    domain_size = 3
     desired_size = 2
 
     print('testing random walks with',rows_num,'rows,',columns_num,'columns, domain size',domain_size, 'and desired size',desired_size)
@@ -273,7 +275,7 @@ if random_walks_test:
     plt.tight_layout()
 
     if save_graphs:
-        plt.savefig('random_walks_quality.png')
+        plt.savefig('./images/random_walks_3x3_quality.png')
 
     if show_graphs:
         plt.show()
@@ -302,14 +304,133 @@ if random_walks_test:
     plt.tight_layout()
 
     if save_graphs:
-        plt.savefig('random_walks_performance.png')
+        plt.savefig('./images/random_walks_3x3_performance.png')
 
     if show_graphs:
         plt.show()
 
     plt.close()
 
+#random walks test 4x4
+if random_walks_test:
+    # Random walks
 
+    algs = ['random walks']
+
+    walks_count = [1,2, 3, 4, 5, 6, 7, 8, 9, 10, 15, 20, 30, 40, 50]
+    # walks_count = [1, 2, 3]
+    rows_num = 4
+    columns_num = 4
+    domain_size = 3
+    desired_size = 2
+
+    print('testing random walks with',rows_num,'rows,',columns_num,'columns, domain size',domain_size, 'and desired size',desired_size)
+
+    categories = walks_count
+
+    score_values = []
+    time_values = []
+    labels = []
+
+    for t in range(num_of_tries):
+        t1 = generate_table(rows_num, columns_num, domain_size, local_ignore_possibles=ignore_possibles)
+        answers, scores, times = find_answer(t1, desired_size, algs, walks_count, show_answers=False, ignore_possibles = ignore_possibles)
+
+        k = 0
+        for alg in algs:
+            if 'random walks' in alg:
+                for i in range(len(walks_count)):
+                    alg = 'random walks ' + str(walks_count[i])
+                    # i += 1
+                    # print (alg,scores[alg])
+                    if t == 0:
+                        score_values.append(scores[alg][0])
+                        labels.append(scores[alg][1])
+                        time_values.append(times[alg])
+                    else:
+                        score_values[k] += scores[alg][0]
+                        labels[k] += scores[alg][1]
+                        time_values[k] += times[alg]
+                        k += 1
+            else:
+                # print (alg,scores[alg])
+                if t == 0:
+                    score_values.append(scores[alg][0])
+                    labels.append(scores[alg][1])
+                    time_values.append(times[alg])
+                else:
+                    score_values[k] += scores[alg][0]
+                    labels[k] += scores[alg][1]
+                    time_values[k] += times[alg]
+                    k += 1
+
+    for k in range(len(score_values)):
+        score_values[k] = score_values[k]/num_of_tries
+        time_values[k] = time_values[k]/num_of_tries
+        labels[k] = labels[k]/num_of_tries
+    print(score_values)
+    print(time_values)            
+
+    # Random Walks Quality: 
+    plt.figure()
+    plt.plot(categories, score_values)
+
+
+    # if not ignore_possibles:
+    #     for i, bar in enumerate(bars):          # adding possibles as labels
+    #         yval = bar.get_height()
+    #         plt.text(bar.get_x() + bar.get_width() / 2, yval,   
+    #                 str(labels[i]),  
+    #                 ha='center', va='bottom', fontsize=10)
+
+    plt.xlabel('Number of Walks')
+    if num_of_tries == 1:
+        plt.ylabel('Score')
+    else:
+        plt.ylabel('Average Score from '+str(num_of_tries)+' tables')
+    plt.title('Random Walks quality')
+
+    plt.xticks(rotation=20, fontsize=9) 
+    plt.yticks(range(0, round(max(score_values)*1.2), 1))
+
+    plt.tight_layout()
+
+    if save_graphs:
+        plt.savefig('./images/random_walks_4x4_quality.png')
+
+    if show_graphs:
+        plt.show()
+    
+
+    plt.close()
+
+
+    # Random walks Performance: 
+
+    plt.figure()
+    plt.plot(categories, time_values)
+
+    plt.xlabel('Number of Walks')
+    if num_of_tries == 1:
+        plt.ylabel('Time (s)')
+    else:
+        plt.ylabel('Average Time from '+str(num_of_tries)+' tables (s)')
+    plt.title('Random Walks performance')
+
+    plt.xticks(rotation=20, fontsize=9) 
+    # plt.yticks(range(0, round(max(score_values)*1.2), 1))
+
+    # plt.yscale('log')
+
+    plt.tight_layout()
+
+    if save_graphs:
+        plt.savefig('./images/random_walks_4x4_performance.png')
+
+    if show_graphs:
+        plt.show()
+
+    plt.close()
 
 
 # Changing number of columns
@@ -440,7 +561,7 @@ if columns_test:
     plt.tight_layout()
 
     if save_graphs:
-        plt.savefig('columns_quality.png')
+        plt.savefig('./images/columns_quality.png')
     
     if show_graphs:
         plt.show()
@@ -469,7 +590,7 @@ if columns_test:
     plt.tight_layout()
 
     if save_graphs:
-        plt.savefig('columns_performance.png')
+        plt.savefig('./images/columns_performance.png')
     
     if show_graphs:
         plt.show()
@@ -500,7 +621,7 @@ if columns_test:
     plt.tight_layout()
 
     if save_graphs:
-        plt.savefig('columns_log_performance.png')
+        plt.savefig('./images/columns_log_performance.png')
     
     if show_graphs:
         plt.show()
@@ -516,8 +637,8 @@ if domains_test:
     # algs = ['similarity', 'similarity minhash', 'greedy','random walks','merge greedy']
     algs = ['similarity', 'similarity minhash', 'greedy','random walks','merge greedy','sorted order','exhaustive']
     walks_count = [10]
-    rows_num = 4
-    columns_num = 4
+    rows_num = 3                # perhaps also try 4x4
+    columns_num = 3
     desired_size = 2
 
     print('testing domains with',rows_num,'rows,',columns_num,'columns, domain size',test_domains, 'and desired size',desired_size)
@@ -589,7 +710,7 @@ if domains_test:
     plt.tight_layout()
 
     if save_graphs:
-        plt.savefig('domains_quality.png')
+        plt.savefig('./images/domains_quality.png')
     
     if show_graphs:
         plt.show()
@@ -615,7 +736,7 @@ if domains_test:
     plt.tight_layout()
 
     if save_graphs:
-        plt.savefig('domains_performance.png')
+        plt.savefig('./images/domains_performance.png')
     
     if show_graphs:
         plt.show()
@@ -643,7 +764,7 @@ if domains_test:
     plt.tight_layout()
 
     if save_graphs:
-        plt.savefig('domains_log_performance.png')
+        plt.savefig('./images/domains_log_performance.png')
     
     if show_graphs:
         plt.show()
@@ -776,7 +897,7 @@ if rows_test:
     plt.tight_layout()
 
     if save_graphs:
-        plt.savefig('rows_quality.png')
+        plt.savefig('./images/rows_quality.png')
     
     if show_graphs:
         plt.show()
@@ -802,7 +923,7 @@ if rows_test:
     plt.tight_layout()
 
     if save_graphs:
-        plt.savefig('rows_performance.png')
+        plt.savefig('./images/rows_performance.png')
     
     if show_graphs:
         plt.show()
@@ -830,7 +951,7 @@ if rows_test:
     plt.tight_layout()
 
     if save_graphs:
-        plt.savefig('rows_log_performance.png')
+        plt.savefig('./images/rows_log_performance.png')
     
     if show_graphs:
         plt.show()
@@ -922,7 +1043,7 @@ if similarity_test:
     plt.tight_layout()
 
     if save_graphs:
-        plt.savefig('similarity_quality.png')
+        plt.savefig('./images/similarity_quality.png')
     
     if show_graphs:
         plt.show()
@@ -948,7 +1069,7 @@ if similarity_test:
     plt.tight_layout()
 
     if save_graphs:
-        plt.savefig('similarity_performance.png')
+        plt.savefig('./images/similarity_performance.png')
     
     if show_graphs:
         plt.show()
@@ -976,7 +1097,7 @@ if similarity_test:
     plt.tight_layout()
 
     if save_graphs:
-        plt.savefig('similarity_log_performance.png')
+        plt.savefig('./images/similarity_log_performance.png')
     
     if show_graphs:
         plt.show()
@@ -1066,7 +1187,7 @@ if similarity_test_2:
     plt.tight_layout()
 
     if save_graphs:
-        plt.savefig('similarity2_quality.png')
+        plt.savefig('./images/similarity2_quality.png')
     
     if show_graphs:
         plt.show()
@@ -1092,7 +1213,7 @@ if similarity_test_2:
     plt.tight_layout()
 
     if save_graphs:
-        plt.savefig('similarity2_performance.png')
+        plt.savefig('./images/similarity2_performance.png')
     
     if show_graphs:
         plt.show()
@@ -1120,12 +1241,209 @@ if similarity_test_2:
     plt.tight_layout()
 
     if save_graphs:
-        plt.savefig('similarity2_log_performance.png')
+        plt.savefig('./images/similarity2_log_performance.png')
     
     if show_graphs:
         plt.show()
 
     plt.close()
+
+
+# Changing number of cols for fastest algs
+if sim_columns_test:
+    # test_columns = [2,3,4] 
+    test_columns = [10,50,100,200,300,400,500,600,700,800,900,1000,1200,1500]#,1700,2000]
+    # algs = ['similarity', 'similarity minhash', 'greedy','random walks','merge greedy']
+    algs = ['similarity', 'similarity minhash']
+    # algs = ['similarity', 'similarity minhash', 'greedy','random walks']
+    walks_count = [10]
+    rows_num = 4    #4
+    domain_size = 3
+    desired_size = 2
+
+    print('testing columns with',rows_num,'rows,',test_columns,'columns, domain size',domain_size, 'and desired size',desired_size)
+
+    score_values = defaultdict(list)           # dict[alg] = list of values
+    time_values = defaultdict(list)   
+
+    categories = defaultdict(list)
+    labels = defaultdict(list)
+    lines = []
+
+
+    for t in range(num_of_tries):
+        print('Runthrough number',t,'of columntest')
+        k_dict = defaultdict(lambda:0)
+
+        if similar_tables:
+            table = generate_table(rows_num, test_columns[0], domain_size)
+
+
+        for j, col_num in enumerate(test_columns):
+            print('starting sim columns test with', col_num, 'cols')
+            if similar_tables == False:
+                table = generate_table(rows_num, col_num, domain_size)
+            elif j > 0:
+                prev_cols = test_columns[j-1]
+                new_count = col_num - prev_cols
+                for m in range(new_count):
+                    # make new col
+                    column_name = 'Col'+str(prev_cols + m + 1)
+                    column_contents = []
+                    for j in range(rows_num):
+                        column_contents.append(str(random.randint(1, domain_size)))
+                    # add new col
+                    if m == (new_count-1):
+                        table.add_column(column_name = column_name, column_contents = column_contents, column_domain = domain_size, update_rels=True)
+                    else:
+                        table.add_column(column_name = column_name, column_contents = column_contents, column_domain = domain_size)
+
+            
+            answers = dict()
+            scores = dict()
+            times = dict()
+
+            # print(table)
+
+            for alg in algs:
+
+                print('starting columns test on', alg ,'with', col_num, 'cols')
+                
+                if 'random walks' in alg and (alg_col_limit['random walks'] != None and col_num > alg_col_limit['random walks']):
+                    print('Cancelled',alg,'on test with',col_num,'columns')
+                    continue  
+                elif (alg_col_limit[alg] != None and col_num > alg_col_limit[alg]):  # skips the current algorithm if over the limit
+                    print('Cancelled',alg,'on test with',col_num,'columns')
+                    continue
+                
+                else:
+                    new_answers, new_scores, new_times = find_answer(table, desired_size, [alg], walks_count, show_answers=False, ignore_possibles = ignore_possibles)
+                    answers = {**answers, **new_answers} # merging the two dictionaries
+                    scores = {**scores, **new_scores}
+                    times = {**times, **new_times}
+
+                if 'random walks' in alg:
+                    for i in range(len(walks_count)):
+                        alg = 'random walks ' + str(walks_count[i])
+                        if t == 0:
+                            score_values[alg].append(scores[alg][0])
+                            labels[alg].append(scores[alg][1])
+                            time_values[alg].append(times[alg])
+                            categories[alg].append(col_num)
+                            if j == 0:
+                                lines.append(alg)
+                        else:
+                            score_values[alg][k_dict[alg]] += scores[alg][0]
+                            labels[alg][k_dict[alg]] += scores[alg][1]
+                            time_values[alg][k_dict[alg]] += times[alg]
+                            k_dict[alg] += 1
+                else:
+                    if t == 0:
+                        score_values[alg].append(scores[alg][0])
+                        labels[alg].append(scores[alg][1])
+                        time_values[alg].append(times[alg])
+                        categories[alg].append(col_num)
+                        if j == 0:
+                            lines.append(alg)
+                    else:
+                        score_values[alg][k_dict[alg]] += scores[alg][0]
+                        labels[alg][k_dict[alg]] += scores[alg][1]
+                        time_values[alg][k_dict[alg]] += times[alg]
+                        k_dict[alg] += 1
+
+
+    plt.figure()
+    for alg in lines:
+        for k in range(len(score_values[alg])):
+            score_values[alg][k] = score_values[alg][k]/num_of_tries
+            time_values[alg][k] = time_values[alg][k]/num_of_tries
+            labels[alg][k] = labels[alg][k]/num_of_tries
+        print('columns',categories[alg], score_values[alg], str(alg))
+        plt.plot(categories[alg], score_values[alg], label=str(alg))
+
+    plt.xlabel('Number of Columns')
+    if num_of_tries == 1:
+        plt.ylabel('Score')
+    else:
+        plt.ylabel('Average Score from '+str(num_of_tries)+' tables')
+    plt.title('Score as columns increase')
+
+    plt.legend()
+
+    plt.gca().xaxis.set_major_locator(MaxNLocator(integer=True))
+    # plt.xticks(range(0, max(categories), 1))#, rotation=20, fontsize=9) 
+    # plt.yticks(range(0, round(max(score_values)*1.2), 1))
+
+    plt.tight_layout()
+
+    if save_graphs:
+        plt.savefig('./images/sim_columns_quality.png')
+    
+    if show_graphs:
+        plt.show()
+
+    plt.close()
+
+    plt.figure()
+    for alg in lines:
+        print(categories[alg], time_values[alg], str(alg))
+        plt.plot(categories[alg], time_values[alg], label=str(alg))
+
+    plt.xlabel('Number of Columns')
+    if num_of_tries == 1:
+        plt.ylabel('Time (s)')
+    else:
+        plt.ylabel('Average Time from '+str(num_of_tries)+' tables (s)')
+    plt.title('Time as columns increase')
+
+    plt.legend()
+
+    plt.gca().xaxis.set_major_locator(MaxNLocator(integer=True))
+    # plt.xticks(range(0, max(categories), 1))
+    # plt.xticks(rotation=20, fontsize=9) 
+    # plt.yticks(range(0, round(max(score_values)*1.2), 1))
+
+    plt.tight_layout()
+
+    if save_graphs:
+        plt.savefig('./images/sim_columns_performance.png')
+    
+    if show_graphs:
+        plt.show()
+
+    plt.close()
+
+    plt.figure()
+    for alg in lines:
+        # print(categories[alg], time_values[alg], str(alg))
+        plt.plot(categories[alg], time_values[alg], label=str(alg))
+
+    plt.xlabel('Number of Columns')
+    if num_of_tries == 1:
+        plt.ylabel('Log10(Time (s))')
+    else:
+        plt.ylabel('Average Log10(Time (s)) from '+str(num_of_tries)+' tables')
+    plt.title('Log Time as columns increase')
+
+    plt.legend()
+
+    plt.gca().xaxis.set_major_locator(MaxNLocator(integer=True))
+    # plt.xticks(range(0, max(categories), 1))
+    # plt.xticks(rotation=20, fontsize=9) 
+    # plt.yticks(range(0, round(max(score_values)*1.2), 1))
+
+    plt.yscale('log')
+
+    plt.tight_layout()
+
+    if save_graphs:
+        plt.savefig('./images/sim_columns_log_performance.png')
+    
+    if show_graphs:
+        plt.show()
+
+    plt.close()
+
 
 
 last_time = time.time()
