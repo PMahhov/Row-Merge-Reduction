@@ -18,12 +18,12 @@ show_graphs = True
 
 # enable/disable testing some aspects
 single_table_test = False
-random_walks_test = False
-columns_test = False
-domains_test = False
-rows_test = False
-similarity_test = False
-similarity_test_2 = False
+random_walks_test = True
+columns_test = True
+domains_test = True
+rows_test = True
+similarity_test = True
+similarity_test_2 = True
 sim_columns_test = True
 
 num_of_tries = 3    # run each test this many times (ex: 3) and take the avg result
