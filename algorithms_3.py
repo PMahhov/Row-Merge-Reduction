@@ -28,10 +28,12 @@ class TableTreeNode():
     nullings: list of nulling operations conducted to get to this point
     
     '''
-    def __init__(self, table, nullings = []):
+    def __init__(self, table, nullings = [], ignore_possibles = False):
         self.table = table
-        self.nullings = nullings          
+        self.nullings = nullings        
         self.children = []
+        self.ignore_possibles = ignore_possibles
+        
 
     def __str__(self):
         return str(self.table)
@@ -59,12 +61,12 @@ class TableTreeNode():
             for i, current_row in enumerate(self.table.rows):
                 for current_column in self.table.columns:
                     if current_row.get_value(current_column) != '*':
-                        new_table = Table(columns = self.table.columns, initial_list=self.table.rows, domains_cardinality=self.table.domains_cardinality, origin ='row objects')    # 1 min for 3x3
+                        new_table = Table(columns = self.table.columns, initial_list=self.table.rows, domains_cardinality=self.table.domains_cardinality, origin ='row objects', ignore_possibles=self.ignore_possibles)    # 1 min for 3x3
                         # TODO: possible optimization, keep a set of existing row objects, if the new row already exists from before add a pointer to that instead of copying into a new one, else add to all objects list
                         new_table.make_null_copying_row(current_row, current_column)
                         new_nullings = copy.deepcopy(self.nullings)
                         new_nullings.append((current_row.get_id(), current_column))
-                        new_node = TableTreeNode(new_table, new_nullings)
+                        new_node = TableTreeNode(table = new_table, nullings = new_nullings, ignore_possibles=self.ignore_possibles)
                         self.children.append(new_node)
 
 
@@ -92,8 +94,8 @@ class TableTree():
     root: node with original table
     
     '''
-    def __init__(self, table):
-        self.root = TableTreeNode(table)
+    def __init__(self, table, ignore_possibles = False):
+        self.root = TableTreeNode(table = table, nullings = [], ignore_possibles=ignore_possibles)
 
 # check similarities of 2-row combinations, then merge most similar, repeat
     def similarity_algorithm(self, desired_size: int, loading_progress = False, make_copy = True):
@@ -848,8 +850,8 @@ class TableTree():
         return unique_bests
 
 
-def find_answer(table, desired_size, alg = ['similarity', 'similarity minhash', 'greedy','random walks','merge greedy','sorted order','exhaustive'], walks_count = [2, 10], time_to_show = 0, show_answers = True, show_time = True):
-    tree = TableTree(table)
+def find_answer(table, desired_size, alg = ['similarity', 'similarity minhash', 'greedy','random walks','merge greedy','sorted order','exhaustive'], walks_count = [2, 10], time_to_show = 0, show_answers = True, show_time = True, ignore_possibles = False):
+    tree = TableTree(table, ignore_possibles = ignore_possibles)
     answers = defaultdict(lambda: None)
     scores = defaultdict(lambda: None)
     times = defaultdict(lambda: None)

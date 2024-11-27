@@ -140,7 +140,7 @@ class Table:
     #                                 attributes=node_data["attribute_data"])
     #             self.add_node(new_node)        
 
-    def create_row(self, new_row, order = None):
+    def create_row(self, new_row, order = None, update_rels = False):
         if order == None:
             order = len(self.rows)
         row_object = Row(order)
@@ -151,7 +151,10 @@ class Table:
         self.rows.append(row_object)
         self.rows_dict[row_object.get_id()] = row_object
 
-    def add_column(self, column_name, column_contents: list, column_domain = None):
+        if update_rels:
+            self.update_all_relationships()
+
+    def add_column(self, column_name, column_contents: list, column_domain = None, update_rels = True):
         self.columns.append(column_name)
         
         for i, row in enumerate(self.rows):
@@ -162,7 +165,8 @@ class Table:
         else:
             self.domains_cardinality[column_name] = column_domain
 
-        self.update_all_relationships()
+        if update_rels:
+            self.update_all_relationships()
 
     def remove_row(self, row):
         self.rows.remove(row)
