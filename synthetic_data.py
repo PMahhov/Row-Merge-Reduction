@@ -13,7 +13,7 @@ random.seed(8)
 ignore_possibles = True        # if true, only use certain relationships
 save_output = True
 save_graphs = True
-show_graphs = True
+show_graphs = False
 
 
 # enable/disable testing some aspects
@@ -269,7 +269,7 @@ if random_walks_test:
         plt.ylabel('Average Score from '+str(num_of_tries)+' tables')
     plt.title('Random Walks quality')
 
-    plt.xticks(rotation=20, fontsize=9) 
+    plt.xticks(rotation=0, fontsize=9) 
     plt.yticks(range(0, round(max(score_values)*1.2), 1))
 
     plt.tight_layout()
@@ -296,7 +296,7 @@ if random_walks_test:
         plt.ylabel('Average Time from '+str(num_of_tries)+' tables (s)')
     plt.title('Random Walks performance')
 
-    plt.xticks(rotation=20, fontsize=9) 
+    plt.xticks(rotation=0, fontsize=9) 
     # plt.yticks(range(0, round(max(score_values)*1.2), 1))
 
     # plt.yscale('log')
@@ -390,7 +390,7 @@ if random_walks_test:
         plt.ylabel('Average Score from '+str(num_of_tries)+' tables')
     plt.title('Random Walks quality')
 
-    plt.xticks(rotation=20, fontsize=9) 
+    plt.xticks(rotation=0, fontsize=9) 
     plt.yticks(range(0, round(max(score_values)*1.2), 1))
 
     plt.tight_layout()
@@ -417,7 +417,7 @@ if random_walks_test:
         plt.ylabel('Average Time from '+str(num_of_tries)+' tables (s)')
     plt.title('Random Walks performance')
 
-    plt.xticks(rotation=20, fontsize=9) 
+    plt.xticks(rotation=0, fontsize=9) 
     # plt.yticks(range(0, round(max(score_values)*1.2), 1))
 
     # plt.yscale('log')
@@ -426,6 +426,127 @@ if random_walks_test:
 
     if save_graphs:
         plt.savefig('./images/random_walks_4x4_performance.png')
+
+    if show_graphs:
+        plt.show()
+
+    plt.close()
+
+#random walks test 5x5
+if random_walks_test:
+    # Random walks
+
+    algs = ['random walks']
+
+    walks_count = [1,2, 3, 4, 5, 6, 7, 8, 9, 10, 15, 20, 30, 40, 50]
+    # walks_count = [1, 2, 3]
+    rows_num = 5
+    columns_num = 5
+    domain_size = 3
+    desired_size = 2
+
+    print('testing random walks with',rows_num,'rows,',columns_num,'columns, domain size',domain_size, 'and desired size',desired_size)
+
+    categories = walks_count
+
+    score_values = []
+    time_values = []
+    labels = []
+
+    for t in range(num_of_tries):
+        t1 = generate_table(rows_num, columns_num, domain_size, local_ignore_possibles=ignore_possibles)
+        answers, scores, times = find_answer(t1, desired_size, algs, walks_count, show_answers=False, ignore_possibles = ignore_possibles)
+
+        k = 0
+        for alg in algs:
+            if 'random walks' in alg:
+                for i in range(len(walks_count)):
+                    alg = 'random walks ' + str(walks_count[i])
+                    # i += 1
+                    # print (alg,scores[alg])
+                    if t == 0:
+                        score_values.append(scores[alg][0])
+                        labels.append(scores[alg][1])
+                        time_values.append(times[alg])
+                    else:
+                        score_values[k] += scores[alg][0]
+                        labels[k] += scores[alg][1]
+                        time_values[k] += times[alg]
+                        k += 1
+            else:
+                # print (alg,scores[alg])
+                if t == 0:
+                    score_values.append(scores[alg][0])
+                    labels.append(scores[alg][1])
+                    time_values.append(times[alg])
+                else:
+                    score_values[k] += scores[alg][0]
+                    labels[k] += scores[alg][1]
+                    time_values[k] += times[alg]
+                    k += 1
+
+    for k in range(len(score_values)):
+        score_values[k] = score_values[k]/num_of_tries
+        time_values[k] = time_values[k]/num_of_tries
+        labels[k] = labels[k]/num_of_tries
+    print(score_values)
+    print(time_values)            
+
+    # Random Walks Quality: 
+    plt.figure()
+    plt.plot(categories, score_values)
+
+
+    # if not ignore_possibles:
+    #     for i, bar in enumerate(bars):          # adding possibles as labels
+    #         yval = bar.get_height()
+    #         plt.text(bar.get_x() + bar.get_width() / 2, yval,   
+    #                 str(labels[i]),  
+    #                 ha='center', va='bottom', fontsize=10)
+
+    plt.xlabel('Number of Walks')
+    if num_of_tries == 1:
+        plt.ylabel('Score')
+    else:
+        plt.ylabel('Average Score from '+str(num_of_tries)+' tables')
+    plt.title('Random Walks quality')
+
+    plt.xticks(rotation=0, fontsize=9) 
+    plt.yticks(range(0, round(max(score_values)*1.2), 1))
+
+    plt.tight_layout()
+
+    if save_graphs:
+        plt.savefig('./images/random_walks_5x5_quality.png')
+
+    if show_graphs:
+        plt.show()
+    
+
+    plt.close()
+
+
+    # Random walks Performance: 
+
+    plt.figure()
+    plt.plot(categories, time_values)
+
+    plt.xlabel('Number of Walks')
+    if num_of_tries == 1:
+        plt.ylabel('Time (s)')
+    else:
+        plt.ylabel('Average Time from '+str(num_of_tries)+' tables (s)')
+    plt.title('Random Walks performance')
+
+    plt.xticks(rotation=0, fontsize=9) 
+    # plt.yticks(range(0, round(max(score_values)*1.2), 1))
+
+    # plt.yscale('log')
+
+    plt.tight_layout()
+
+    if save_graphs:
+        plt.savefig('./images/random_walks_5x5_performance.png')
 
     if show_graphs:
         plt.show()
