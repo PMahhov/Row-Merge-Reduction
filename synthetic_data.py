@@ -20,10 +20,10 @@ show_graphs = False
 single_table_test = False
 random_walks_test = False
 columns_test = True
-domains_test = False
-rows_test = True
-similarity_test = True
-similarity_test_2 = True
+domains_test = True
+rows_test = False
+similarity_test = False
+similarity_test_2 = False
 sim_columns_test = True
 
 num_of_tries = 3    # run each test this many times (ex: 3) and take the avg result
@@ -39,7 +39,7 @@ similar_tables = True       # if true, add columns or rows instead of making com
 alg_col_limit = {
     'exhaustive': 4,
     'sorted order': 4,
-    'merge greedy': 8,
+    'merge greedy': 5,
     'random walks': 10,
     'greedy': 20,
     'similarity': None,
@@ -63,7 +63,7 @@ print('started testing with synthetic data')
 
 if save_output:
     print('saving output')
-    file = open('synthetic_output.txt', 'a')
+    file = open('synthetic_output_domains_test_4x3.txt', 'a')
     sys.stdout = file
     print('================================================================================')
     print('TEST START')
@@ -201,7 +201,7 @@ if domains_test:
     # algs = ['similarity', 'similarity minhash', 'greedy','random walks','merge greedy']
     algs = ['similarity', 'similarity minhash', 'greedy','random walks','merge greedy','sorted order','exhaustive']
     walks_count = [10]
-    rows_num = 3                # perhaps also try 4x4
+    rows_num = 4                # perhaps also try 4x4
     columns_num = 3
     desired_size = 2
 
@@ -277,7 +277,7 @@ if domains_test:
     plt.tight_layout()
 
     if save_graphs:
-        plt.savefig('./images/domains_quality_3x3.png')
+        plt.savefig('./images/domains_quality_4x3.png')
     
     if show_graphs:
         plt.show()
@@ -303,7 +303,7 @@ if domains_test:
     plt.tight_layout()
 
     if save_graphs:
-        plt.savefig('./images/domains_performance_3x3.png')
+        plt.savefig('./images/domains_performance_4x3.png')
     
     if show_graphs:
         plt.show()
@@ -331,7 +331,7 @@ if domains_test:
     plt.tight_layout()
 
     if save_graphs:
-        plt.savefig('./images/domains_log_performance_3x3.png')
+        plt.savefig('./images/domains_log_performance_4x3.png')
     
     if show_graphs:
         plt.show()
