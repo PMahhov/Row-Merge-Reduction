@@ -38,7 +38,7 @@ similar_tables = True       # if true, add columns or rows instead of making com
 # algorithm will not run on tables larger than this many columns
 alg_col_limit = {
     'exhaustive': 4,
-    'sorted order': 5,
+    'sorted order': 4,
     'merge greedy': 8,
     'random walks': 10,
     'greedy': 20,
@@ -49,7 +49,7 @@ alg_col_limit = {
 # algorithm will not run on tables larger than this many rows
 alg_row_limit = {
     'exhaustive': 4,
-    'sorted order': 5,
+    'sorted order': 4,
     'merge greedy': 20,
     'random walks': 12,
     'greedy': 20,
@@ -94,8 +94,8 @@ def generate_table(rows_num: int, columns_num: int, domain_size: int, inferred_d
 
 if single_table_test:
     # for i in range(3):
-    t1 = generate_table(rows_num = 4, columns_num = 3, domain_size = 4)
-        # print(t1)
+    table = generate_table(rows_num = 4, columns_num = 3, domain_size = 4)
+        # print(table)
 
 
     # algs = ['similarity', 'similarity minhash', 'greedy','random walks','merge greedy','sorted order','exhaustive']
@@ -103,7 +103,7 @@ if single_table_test:
     algs = ['similarity', 'similarity minhash', 'greedy','random walks','merge greedy','sorted order']
 
     walks_count = [1,2, 3]
-    answers, scores, times = find_answer(t1, 2, algs, walks_count, show_answers=True, ignore_possibles = ignore_possibles)
+    answers, scores, times = find_answer(table, 2, algs, walks_count, show_answers=True, ignore_possibles = ignore_possibles)
 
     # print('answers')
     # print(answers)
@@ -1227,8 +1227,8 @@ if random_walks_test:
     labels = []
 
     for t in range(num_of_tries):
-        t1 = generate_table(rows_num, columns_num, domain_size, local_ignore_possibles=ignore_possibles)
-        answers, scores, times = find_answer(t1, desired_size, algs, walks_count, show_answers=False, ignore_possibles = ignore_possibles)
+        table = generate_table(rows_num, columns_num, domain_size, local_ignore_possibles=ignore_possibles)
+        answers, scores, times = find_answer(table, desired_size, algs, walks_count, show_answers=False, ignore_possibles = ignore_possibles)
 
         k = 0
         for alg in algs:
@@ -1348,8 +1348,8 @@ if random_walks_test:
     labels = []
 
     for t in range(num_of_tries):
-        t1 = generate_table(rows_num, columns_num, domain_size, local_ignore_possibles=ignore_possibles)
-        answers, scores, times = find_answer(t1, desired_size, algs, walks_count, show_answers=False, ignore_possibles = ignore_possibles)
+        table = generate_table(rows_num, columns_num, domain_size, local_ignore_possibles=ignore_possibles)
+        answers, scores, times = find_answer(table, desired_size, algs, walks_count, show_answers=False, ignore_possibles = ignore_possibles)
 
         k = 0
         for alg in algs:
@@ -1469,8 +1469,8 @@ if random_walks_test:
     labels = []
 
     for t in range(num_of_tries):
-        t1 = generate_table(rows_num, columns_num, domain_size, local_ignore_possibles=ignore_possibles)
-        answers, scores, times = find_answer(t1, desired_size, algs, walks_count, show_answers=False, ignore_possibles = ignore_possibles)
+        table = generate_table(rows_num, columns_num, domain_size, local_ignore_possibles=ignore_possibles)
+        answers, scores, times = find_answer(table, desired_size, algs, walks_count, show_answers=False, ignore_possibles = ignore_possibles)
 
         k = 0
         for alg in algs:
