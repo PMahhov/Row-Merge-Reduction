@@ -18,9 +18,9 @@ show_graphs = False
 
 # enable/disable testing some aspects
 single_table_test = False
-random_walks_test = True
+random_walks_test = False
 columns_test = True
-domains_test = True
+domains_test = False
 rows_test = True
 similarity_test = True
 similarity_test_2 = True
@@ -197,7 +197,7 @@ if single_table_test:
 # Changing size of domains
 if domains_test:
     # test_domains = [2,3,4] 
-    test_domains = [2,3,4,5,7]
+    test_domains = [2,3,4,5,6,7,8,9,10,12]
     # algs = ['similarity', 'similarity minhash', 'greedy','random walks','merge greedy']
     algs = ['similarity', 'similarity minhash', 'greedy','random walks','merge greedy','sorted order','exhaustive']
     walks_count = [10]
@@ -215,11 +215,14 @@ if domains_test:
     lines = []
 
     for t in range(num_of_tries):
+        print('Runthrough number',t,'of domains test')
         k_dict = defaultdict(lambda:0)
 
         for j, dom_num in enumerate(categories):
+            print('starting domains test with domain size', dom_num)
             table = generate_table(rows_num, columns_num, domain_size = dom_num)
-            answers, scores, times = find_answer(table, desired_size, algs, walks_count, show_answers=False, ignore_possibles = ignore_possibles)
+            print(table)
+            answers, scores, times = find_answer(table, desired_size, algs, walks_count, show_answers=True, ignore_possibles = ignore_possibles)
             
             for alg in algs:
                 if 'random walks' in alg:
@@ -274,7 +277,7 @@ if domains_test:
     plt.tight_layout()
 
     if save_graphs:
-        plt.savefig('./images/domains_quality.png')
+        plt.savefig('./images/domains_quality_3x3.png')
     
     if show_graphs:
         plt.show()
@@ -300,7 +303,7 @@ if domains_test:
     plt.tight_layout()
 
     if save_graphs:
-        plt.savefig('./images/domains_performance.png')
+        plt.savefig('./images/domains_performance_3x3.png')
     
     if show_graphs:
         plt.show()
@@ -328,7 +331,7 @@ if domains_test:
     plt.tight_layout()
 
     if save_graphs:
-        plt.savefig('./images/domains_log_performance.png')
+        plt.savefig('./images/domains_log_performance_3x3.png')
     
     if show_graphs:
         plt.show()
@@ -1575,5 +1578,5 @@ last_time = time.time()
 if save_output:
     print('ended testing with synthetic data, it took',last_time-first_time,'seconds total')
     file.close()
-
-print('ended testing with synthetic data, it took',last_time-first_time,'seconds total')
+else:
+    print('ended testing with synthetic data, it took',last_time-first_time,'seconds total')

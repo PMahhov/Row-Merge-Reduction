@@ -381,8 +381,11 @@ class TableTree():
 
         n_count = 0
 
+        # remove initial duplicates
+        self.root.table.check_merges()
+
         if self.root.get_size() <= desired_size:
-            return [self.root.table]
+            return [TableTreeNode(self.root.table, nullings = [])]
 
         current_node = self.root
 
@@ -486,8 +489,11 @@ class TableTree():
 
         n_count = 0
 
+        # remove initial duplicates
+        self.root.table.check_merges()
+
         if self.root.get_size() <= desired_size:
-            return [self.root.table]
+            return [TableTreeNode(self.root.table, nullings = [])]
 
         current_node = self.root
 
@@ -599,8 +605,12 @@ class TableTree():
             print('Starting greedy algorithm')
 
         valids = set()
+
+        # remove initial duplicates
+        self.root.table.check_merges()
+
         if self.root.get_size() <= desired_size:
-            return [self.root.table]
+            return [TableTreeNode(self.root.table, nullings = [])]
 
         valid_answer_exists = False
         new_to_check = [[self.root]]
@@ -684,8 +694,11 @@ class TableTree():
 
         self.root.children = []
         
+        # remove initial duplicates
+        self.root.table.check_merges()
+
         if self.root.get_size() <= desired_size:
-            return [self.root.table]
+            return [TableTreeNode(self.root.table, nullings = [])]
 
         new_to_check = [self.root]
 
@@ -762,8 +775,11 @@ class TableTree():
 
         best_valids = []
 
+        # remove initial duplicates
+        self.root.table.check_merges()
+
         if self.root.get_size() <= desired_size:
-            return [self.root.table]
+            return [TableTreeNode(self.root.table, nullings = [])]
 
 
         best_valids = []
@@ -873,11 +889,12 @@ def find_answer(table, desired_size, alg = ['similarity', 'similarity minhash', 
                 print('Score (certains, possibles):',f'({answer.get_certains()}, {answer.get_exp_possibles()})')
                 print(len(answer.nullings),'nullings:',answer.nullings)
         time_similarity = end_similarity - start_similarity
+        score =  (similarity_answers[0].get_certains(), similarity_answers[0].get_exp_possibles())
         if time_similarity > time_to_show and show_time:
-            print('Similarity took', time_similarity,'seconds')
+            print('Similarity took', time_similarity,'seconds, with score',score)
 
         answers['similarity'] = similarity_answers
-        scores['similarity'] = (similarity_answers[0].get_certains(), similarity_answers[0].get_exp_possibles())
+        scores['similarity'] = score
         times['similarity'] = time_similarity
 
     if alg == 'all except exhaustive' or 'similarity minhash' in alg:
@@ -895,11 +912,12 @@ def find_answer(table, desired_size, alg = ['similarity', 'similarity minhash', 
                 print('Score (certains, possibles):',f'({answer.get_certains()}, {answer.get_exp_possibles()})')
                 print(len(answer.nullings),'nullings:',answer.nullings)
         time_similarity_minhash = end_similarity_minhash - start_similarity_minhash
+        score = (similarity_minhash_answers[0].get_certains(), similarity_minhash_answers[0].get_exp_possibles())
         if time_similarity_minhash > time_to_show and show_time:
-            print('Similarity minhash took', time_similarity_minhash,'seconds')     
+            print('Similarity minhash took', time_similarity_minhash,'seconds, with score',score)     
 
         answers['similarity minhash'] = similarity_minhash_answers
-        scores['similarity minhash'] = (similarity_minhash_answers[0].get_certains(), similarity_minhash_answers[0].get_exp_possibles())
+        scores['similarity minhash'] = score
         times['similarity minhash'] = time_similarity_minhash
 
     if alg == 'all except exhaustive' or 'greedy' in alg:
@@ -913,11 +931,12 @@ def find_answer(table, desired_size, alg = ['similarity', 'similarity minhash', 
                 print('Score (certains, possibles):',f'({answer.get_certains()}, {answer.get_exp_possibles()})')
                 print(len(answer.nullings),'nullings:',answer.nullings)
         time_greedy = end_greedy - start_greedy
+        score = (greedy_answers[0].get_certains(), greedy_answers[0].get_exp_possibles())
         if time_greedy > time_to_show and show_time:
-            print('Greedy took', time_greedy,'seconds')
+            print('Greedy took', time_greedy,'seconds, with score',score)
 
         answers['greedy'] = greedy_answers
-        scores['greedy'] = (greedy_answers[0].get_certains(), greedy_answers[0].get_exp_possibles())
+        scores['greedy'] = score
         times['greedy'] = time_greedy
 
     if alg == 'all except exhaustive' or 'random walks' in alg:
@@ -947,18 +966,19 @@ def find_answer(table, desired_size, alg = ['similarity', 'similarity minhash', 
                     print('Score (certains, possibles):',f'({answer.get_certains()}, {answer.get_exp_possibles()})')
                     print(len(answer.nullings),'nullings:',answer.nullings)
             time_walks = end_walks - start_walks
+            score = (walks_answers[0].get_certains(), walks_answers[0].get_exp_possibles())
             if time_walks > time_to_show and show_time:
                 if single_walk:
-                    print(walks_count,'random walks took', time_walks,'seconds')
+                    print(walks_count,'random walks took', time_walks,'seconds, with score',score)
                 else:
-                    print(walks_count[i],'random walks took', time_walks,'seconds')
+                    print(walks_count[i],'random walks took', time_walks,'seconds, with score',score)
             if single_walk:
                 answers['random walks '+str(walks_count)] = walks_answers
-                scores['random walks '+str(walks_count)] = (walks_answers[0].get_certains(), walks_answers[0].get_exp_possibles())
+                scores['random walks '+str(walks_count)] = score
                 times['random walks '+str(walks_count)] = time_walks
             else:
                 answers['random walks '+str(walks_count[i])] = walks_answers
-                scores['random walks '+str(walks_count[i])] = (walks_answers[0].get_certains(), walks_answers[0].get_exp_possibles())
+                scores['random walks '+str(walks_count[i])] = score
                 times['random walks '+str(walks_count[i])] = time_walks
 
     if alg == 'all except exhaustive' or 'merge greedy' in alg:
@@ -972,11 +992,13 @@ def find_answer(table, desired_size, alg = ['similarity', 'similarity minhash', 
                 print('Score (certains, possibles):',f'({answer.get_certains()}, {answer.get_exp_possibles()})')
                 print(len(answer.nullings),'nullings:',answer.nullings)
         time_merge_greedy = end_merge_greedy - start_merge_greedy
+
+        score = (merge_greedy_answers[0].get_certains(), merge_greedy_answers[0].get_exp_possibles())
         if time_merge_greedy > time_to_show and show_time:
-            print('Merge greedy took', time_merge_greedy,'seconds')         
+            print('Merge greedy took', time_merge_greedy,'seconds, with score',score)         
 
         answers['merge greedy'] = merge_greedy_answers
-        scores['merge greedy'] = (merge_greedy_answers[0].get_certains(), merge_greedy_answers[0].get_exp_possibles())
+        scores['merge greedy'] = score
         times['merge greedy'] = time_merge_greedy
 
     if alg == 'all except exhaustive' or 'sorted order' in alg:
@@ -990,11 +1012,12 @@ def find_answer(table, desired_size, alg = ['similarity', 'similarity minhash', 
                 print('Score (certains, possibles):',f'({answer.get_certains()}, {answer.get_exp_possibles()})')
                 print(len(answer.nullings),'nullings:',answer.nullings)
         time_sorted_order = end_sorted_order - start_sorted_order
+        score = (sorted_order_answers[0].get_certains(), sorted_order_answers[0].get_exp_possibles())
         if time_sorted_order > time_to_show and show_time:
-            print('Sorted order took', time_sorted_order,'seconds')
+            print('Sorted order took', time_sorted_order,'seconds, with score',score)
 
         answers['sorted order'] = sorted_order_answers
-        scores['sorted order'] = (sorted_order_answers[0].get_certains(), sorted_order_answers[0].get_exp_possibles())
+        scores['sorted order'] = score
         times['sorted order'] = time_sorted_order
 
     if alg != 'all except exhaustive' and 'exhaustive' in alg:
@@ -1009,11 +1032,13 @@ def find_answer(table, desired_size, alg = ['similarity', 'similarity minhash', 
                 print('Score (certains, possibles):',f'({answer.get_certains()}, {answer.get_exp_possibles()})')
                 print(len(answer.nullings),'nullings:',answer.nullings)
         time_comp = end_comp - start_comp
+
+        score = (comp_answers[0].get_certains(), comp_answers[0].get_exp_possibles())
         if time_comp > time_to_show and show_time:
-            print('Exhaustive calculation took',time_comp,'seconds')  
+            print('Exhaustive calculation took',time_comp,'seconds, with score',score)  
 
         answers['exhaustive'] = comp_answers
-        scores['exhaustive'] = (comp_answers[0].get_certains(), comp_answers[0].get_exp_possibles())
+        scores['exhaustive'] = score
         times['exhaustive'] = time_comp       
 
     return (answers, scores, times)   
