@@ -813,14 +813,17 @@ class TableTree():
                                     best_valids = [child]
                                     max_certains = certains
                                     min_possibles = possibles
+                                    latest_best_walk = i+1
                                 elif max_certains < certains:
                                     best_valids = [child]
                                     max_certains = certains
                                     min_possibles = possibles
+                                    latest_best_walk = i+1
                                 elif max_certains == certains:
                                     if min_possibles > possibles:
                                         best_valids = [child]
                                         min_possibles = possibles
+                                        latest_best_walk = i+1
                                     elif min_possibles == possibles:
                                         best_valids.append(child)
                             else:           # child is not valid
@@ -830,14 +833,11 @@ class TableTree():
                                     # currents.append(child)
                                 currents.append(child)
                     new_to_check.append(currents)
-                if valid_answer_exists:
-                    if loading_progress:
-                        print('better than before')
-                    latest_best_walk = i+1
+                    
     
 
 
-        if pruning and (loading_progress or show_latest_best):
+        if (loading_progress or show_latest_best):
             print('best walk on walk number', latest_best_walk,'out of',walks_count,'with score','('+str(max_certains)+','+str(min_possibles)+')')
         if len(best_valids) == 1:
             return best_valids
