@@ -57,6 +57,18 @@ alg_row_limit = {
     'similarity minhash': None 
 }
 
+# algorithm will not run on tables that have a column domain larger than this
+alg_dom_limit = {
+    'exhaustive': 2,
+    'sorted order': 4,
+    'merge greedy': None,
+    'random walks': None,
+    'greedy': None,
+    'similarity': None,
+    'similarity minhash': None 
+}
+
+
 
 first_time = time.time()
 print('started testing with synthetic data')
@@ -222,9 +234,29 @@ if domains_test:
             print('starting domains test with domain size', dom_num)
             table = generate_table(rows_num, columns_num, domain_size = dom_num)
             print(table)
-            answers, scores, times = find_answer(table, desired_size, algs, walks_count, show_answers=True, ignore_possibles = ignore_possibles)
+            # answers, scores, times = find_answer(table, desired_size, algs, walks_count, show_answers=True, ignore_possibles = ignore_possibles)
             
+            answers = dict()
+            scores = dict()
+            times = dict()
+
             for alg in algs:
+
+                print('starting domains test on alg', alg, 'with domain size', dom_num)
+
+                if 'random walks' in alg and (alg_dom_limit['random walks'] != None and dom_num > alg_dom_limit['random walks']):
+                    print('Cancelled',alg,'on test with domain size',dom_num)
+                    continue  
+                elif (alg_dom_limit[alg] != None and dom_num > alg_dom_limit[alg]):  # skips the current algorithm if over the limit
+                    print('Cancelled',alg,'on test with with domain size',dom_num)
+                    continue
+
+                else:
+                    new_answers, new_scores, new_times = find_answer(table, desired_size, [alg], walks_count, show_answers=False, ignore_possibles = ignore_possibles)
+                    answers = {**answers, **new_answers} # merging the two dictionaries
+                    scores = {**scores, **new_scores}
+                    times = {**times, **new_times}
+
                 if 'random walks' in alg:
                     for i in range(len(walks_count)):
                         alg = 'random walks ' + str(walks_count[i])
