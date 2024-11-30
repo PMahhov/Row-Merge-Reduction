@@ -60,7 +60,7 @@ alg_row_limit = {
 # algorithm will not run on tables that have a column domain larger than this
 alg_dom_limit = {
     'exhaustive': 2,
-    'sorted order': 4,
+    'sorted order': 6,
     'merge greedy': None,
     'random walks': None,
     'greedy': None,
@@ -208,8 +208,8 @@ if single_table_test:
 
 # Changing size of domains
 if domains_test:
-    # test_domains = [2,3,4] 
-    test_domains = [2,3,4,5,6,7,8,9,10,12]
+    # test_domains = [2,3] 
+    test_domains = [2,3,4,5,6,7,8,9,10,12,15,20]
     # algs = ['similarity', 'similarity minhash', 'greedy','random walks','merge greedy']
     algs = ['similarity', 'similarity minhash', 'greedy','random walks','merge greedy','sorted order','exhaustive']
     walks_count = [10]
@@ -222,7 +222,7 @@ if domains_test:
     score_values = defaultdict(list)           # dict[alg] = list of values
     time_values = defaultdict(list)   
 
-    categories = test_domains
+    categories = defaultdict(list)
     labels = defaultdict(list)
     lines = []
 
@@ -230,7 +230,7 @@ if domains_test:
         print('Runthrough number',t,'of domains test')
         k_dict = defaultdict(lambda:0)
 
-        for j, dom_num in enumerate(categories):
+        for j, dom_num in enumerate(test_domains):
             print('starting domains test with domain size', dom_num)
             table = generate_table(rows_num, columns_num, domain_size = dom_num)
             print(table)
@@ -264,6 +264,7 @@ if domains_test:
                             score_values[alg].append(scores[alg][0])
                             labels[alg].append(scores[alg][1])
                             time_values[alg].append(times[alg])
+                            categories[alg].append(dom_num)
                             if j == 0:
                                 lines.append(alg)
                         else:
@@ -276,6 +277,7 @@ if domains_test:
                         score_values[alg].append(scores[alg][0])
                         labels[alg].append(scores[alg][1])
                         time_values[alg].append(times[alg])
+                        categories[alg].append(dom_num)
                         if j == 0:
                             lines.append(alg)
                     else:
@@ -290,8 +292,8 @@ if domains_test:
             score_values[alg][k] = score_values[alg][k]/num_of_tries
             time_values[alg][k] = time_values[alg][k]/num_of_tries
             labels[alg][k] = labels[alg][k]/num_of_tries
-        print('domains',categories, score_values[alg], str(alg))
-        plt.plot(categories, score_values[alg], label=str(alg))
+        print('domains',categories[alg], score_values[alg], str(alg))
+        plt.plot(categories[alg], score_values[alg], label=str(alg))
 
     plt.xlabel('Size of column domain')
     if num_of_tries == 1:
@@ -318,8 +320,8 @@ if domains_test:
 
     plt.figure()
     for alg in lines:
-        print(categories, time_values[alg], str(alg))
-        plt.plot(categories, time_values[alg], label=str(alg))
+        print(categories[alg], time_values[alg], str(alg))
+        plt.plot(categories[alg], time_values[alg], label=str(alg))
 
     plt.xlabel('Size of column domain')
     if num_of_tries == 1:
@@ -345,7 +347,7 @@ if domains_test:
     plt.figure()
     for alg in lines:
         # print(categories, time_values[alg], str(alg))
-        plt.plot(categories, time_values[alg], label=str(alg))
+        plt.plot(categories[alg], time_values[alg], label=str(alg))
 
     plt.xlabel('Size of column domain')
     if num_of_tries == 1:
