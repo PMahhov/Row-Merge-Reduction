@@ -100,7 +100,10 @@ class TableTree():
 # check similarities of 2-row combinations, then merge most similar, repeat
     def similarity_algorithm(self, desired_size: int, loading_progress = False, make_copy = True):
         if make_copy:       # you can set make copy to false to speed it up if you're not going to be reusing the same table again
+            start_copy = time.time()
             table = copy.deepcopy(self.root.table)
+            end_copy = time.time()
+            print('making a copy of the table took', end_copy - start_copy,'seconds')
         else:
             table = self.root.table
 
@@ -108,13 +111,18 @@ class TableTree():
             print('Calculating initial similarities')
 
         # remove initial duplicates
+        start_initial_merge = time.time()
         table.check_merges()
+        end_initial_merge = time.time()
+        print('initial check merges took', end_initial_merge - start_initial_merge,'seconds')
 
         if table.get_size() <= desired_size:
             return [TableTreeNode(table, nullings = [])]
 
         nullings = [] 
         similarity_heap = []
+        
+        start_initial_heap = time.time()
         
         for i in range(len(table.rows)):
             row_1 = table.rows[i]
@@ -130,10 +138,16 @@ class TableTree():
                 
                 heapq.heappush(similarity_heap, (-jaccard_sim, pair))
         
+        end_initial_heap = time.time()
+        print('making the initial heap took',end_initial_heap - start_initial_heap,'seconds')
+
         if loading_progress:
             print('pairing and merging')
 
         columns = table.columns
+
+        start_merging_loop = time.time()
+
         while table.get_size() > desired_size:
         # find best pair
             best_pair = heapq.heappop(similarity_heap)[1]
@@ -216,6 +230,8 @@ class TableTree():
             heapq.heapify(similarity_heap) 
 
         # repeat until desired size is reached
+        end_merging_loop = time.time()
+        print('the merging loop took',end_merging_loop - start_merging_loop,'seconds')
         
         return [TableTreeNode(table, nullings)]
 
@@ -223,12 +239,19 @@ class TableTree():
 # check similarities of 2-row combinations, then merge most similar, repeat
     def similarity_minhash_algorithm(self, desired_size: int, loading_progress = False, make_copy = True):
         if make_copy:
+            start_copy = time.time()
             table = copy.deepcopy(self.root.table)
+            end_copy = time.time()
+            print('making a copy of the table took', end_copy - start_copy,'seconds')
         else:
             table = self.root.table
 
+        start_initial_merge = time.time()
         # remove initial duplicates
         table.check_merges()
+
+        end_initial_merge = time.time()
+        print('initial check merges took', end_initial_merge - start_initial_merge,'seconds')
 
         if table.get_size() <= desired_size:
             return [TableTreeNode(table, nullings = [])]
@@ -239,6 +262,8 @@ class TableTree():
         nullings = [] 
         similarity_heap = []
         minhash_dict = defaultdict(lambda: None)
+
+        start_initial_heap = time.time()
         
         for i in range(len(table.rows)):
             row_1 = table.rows[i]
@@ -268,6 +293,11 @@ class TableTree():
                 
                 heapq.heappush(similarity_heap, (-jaccard_sim, pair))
         
+        end_initial_heap = time.time()
+        print('making the initial heap took',end_initial_heap - start_initial_heap,'seconds')
+
+        start_merging_loop = time.time()
+
         columns = table.columns
         while table.get_size() > desired_size:
         # find best pair
@@ -363,6 +393,8 @@ class TableTree():
             heapq.heapify(similarity_heap) 
 
         # repeat until desired size is reached
+        end_merging_loop = time.time()
+        print('the merging loop took',end_merging_loop - start_merging_loop,'seconds')
         
         return [TableTreeNode(table, nullings)]
 
