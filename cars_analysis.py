@@ -19,57 +19,49 @@ save_graphs = True
 single_table_test = False
 desired_size_test = True
 
-# max_rows = 10000  #None         # how many rows to take at most, None is unlimited
-max_rows = 1000
-# max_rows = None
-# desired_size = [2000,3000,4000,5000,6000,7000,8000,9000]         # what is the maximum number of rows of the reduced database
-desired_size = [9999,9500,9000,8000,7000,6000,5000,4000,3500,3250,3000]#,4000,3000,2000] 
-desired_size = [900,800,700,600,500,400,300,200,100,50] 
-# desired_size = [20000,15000,10000]
+use_full_db = True
 
+# max_rows = 10  #None         # how many rows to take at most, None is unlimited
+max_rows = 1000
+# desired_size = [2000,3000,4000,5000,6000,7000,8000,9000]         # what is the maximum number of rows of the reduced database
+# desired_size = [9000,8000,7000,6000,5000]#,4000,3000,2000] 
+# desired_size = [4000,3000,2000] 
+desired_size = [950,900,800,700,600,500,400,300,200,100,50] 
+# desired_size = [20000,15000,10000]
+# desired_size = [990000,900000,800000]
+# desired_size = [99000,90000,80000]
+# desired_size = [49000, 45000, 40000, 30000]
 
 # Function to load the data into a 2D list and extract specific columns
-def load_and_filter_data(file_path, selected_columns, max_rows = max_rows):
-    skipped_rowlength = 0
-    skipped_invalid_state = 0
-    skipped_rental = 0
+def load_and_filter_data(file_path, selected_columns, max_rows = max_rows, delimiter = ','):
+    skipped = 0
 
     data = []
     with open(file_path, 'r') as file:
-        csv_reader = csv.reader(file, delimiter='\t')  # Tab-separated file
+        # csv_reader = csv.reader(file, delimiter='\t')  # Tab-separated file
+        csv_reader = csv.reader(file, delimiter=delimiter) 
         for i, row in enumerate(csv_reader):
-            if max_rows != None and i - (skipped_invalid_state + skipped_rental + skipped_rowlength) >= max_rows:
+            if max_rows != None and i - (skipped) >= max_rows:
                 break
-            elif len(row) < 43:
-                # print('skipped row',i,row[0], 'for not enough data, row length',len(row))
-                skipped_rowlength += 1
-                continue
-            elif row[1] not in ['TX','FL','NULL']:
-                # print('skipped row',i,'for incorrect state')
-                skipped_invalid_state += 1
-                continue
-            elif row[5] in ['Rental Property','NULL','Land Property']:       # we only look into houses for sale for better price standardization
-                skipped_rental += 1
-                continue
             # Extract only the selected columns (convert 1-based to 0-based indexing)
             filtered_row = [row[i - 1] for i in selected_columns]
             for i, value in enumerate(filtered_row):
-                if value == 'NULL':
+                if value in ['NULL','Dont Care']:
                     filtered_row[i] = '*'           # convert NULL to *
+                elif value == 'NO':
+                    filtered_row[i] = 'No'
                 elif i == 1:
+                    # filtered_row[1] = int(filtered_row[1].replace(',',''))      # removing separators from price
                     price = int(filtered_row[1].replace(',',''))      # removing separators from price
-                    if price < 100000:                  # binning price into 4 categories
-                        filtered_row[1] = '<100k'
-                    elif price < 500000:
-                        filtered_row[1] = '100k-500k'
-                    elif price < 1000000:
-                        filtered_row[1] = '500k-1M'
+                    if price < 10000:                  # binning price into 4 categories
+                        filtered_row[1] = '<10k'
+                    elif price < 20000:
+                        filtered_row[1] = '10k-20k'
+                    elif price < 30000:
+                        filtered_row[1] = '20k-30k'
                     else:
-                        filtered_row[1] = '>1M'
+                        filtered_row[1] = '>30k'
             data.append(filtered_row)
-        print('skipped',skipped_rowlength,'for broken input')
-        print('skipped',skipped_invalid_state,'for invalid state')
-        print('skipped',skipped_rental,'for being a rental or just land')
         print('kept',len(data),'rows')
 
     return data
@@ -85,20 +77,26 @@ def create_column_unique_dict(data, column_names):
     
     return column_dict
 
-selected_columns = [2, 5] + list(range(27, 44))
 
-file_path = 'data/realtordatabase.CSV'
+print('loading and filtering data')
+if use_full_db:
+    file_path = 'data/yahooAuto1M.CSV'
+    selected_columns = [5, 6, 8] + list(range(10, 44))
+    data = load_and_filter_data(file_path, selected_columns)
+    
+else:
+    file_path = 'data/autos.CSV'
+    selected_columns = [5, 6, 8] + list(range(10, 43)) + [45]
+    data = load_and_filter_data(file_path, selected_columns, delimiter='\t')
 
+column_names = ['state','price','color','cylinders','radio','air conditioning','alarm','anti lock brakes','cd changer','cd player','cassette player','child safety latch','driver air bag','fog lights','heated seats','keyless entries','navigation system','passenger airbag','power door locks','power seats','power steering','power window','premium sound','premium wheels','rear defroster','rear window wiper','roof rack','side airbag','spoiler','sunroof','climate control','cruise control','power mirrors','alloy wheels','steering wheel radio','tinted windows','make']
 
-data = load_and_filter_data(file_path, selected_columns)
-
-column_names = ['state','price','bedroomcount','bathroomcount','fence','Deck','Swimming Pool','Smoke Detector','Garage','Parking','Automatic Gates', 'Porch','Playground','Community Clubhouse','Trees','Courtyard','Sidewalk','Cul-de-Sac','Landscaped']
-
+print('making uniques dict')
 column_unique_dict = create_column_unique_dict(data, column_names)
 
 domains = {}
 for col, uniques in column_unique_dict.items():
-    if col in ['state','bedroomcount','bathroomcount']:
+    if '*' in uniques:
         domains[col] = len(uniques) - 1
     else:
         domains[col] = len(uniques)
@@ -109,111 +107,12 @@ for col, uniques in column_unique_dict.items():
 # for row in data:
 #     print(row)
 
-# print("\nUnique Values per Column:")
-# for col, unique_values in column_unique_dict.items():
-#     if col not in ['type']:
-#         print(f"Column {col}: {unique_values}")
-
-if single_table_test:
-    print('Started making the table')
-    start = time.time()
-    table = Table(columns = column_names, initial_list = data, domains_cardinality = domains, origin = 'lists', ignore_possibles=ignore_possibles)
-        # print(table)
-    end = time.time()
-    print('Making the table object took',end-start,'seconds')
-
-    # algs = ['similarity', 'similarity minhash', 'greedy','random walks','merge greedy','sorted order','exhaustive']
-    # algs = ['similarity', 'similarity minhash', 'greedy','random walks','merge greedy']
-    # algs = ['similarity', 'similarity minhash', 'greedy','random walks','merge greedy','sorted order']
-    algs = ['similarity', 'similarity minhash']
-
-    walks_count = [10]
-    answers, scores, times = find_answer(table, desired_size[0], algs, walks_count, show_answers=False, ignore_possibles = ignore_possibles)
-
-    # print('answers')
-    # print(answers)
-    # print('scores')
-    # print(scores)
-    # print('times')
-    # print(times)
+print("\nUnique Values per Column:")
+for col, unique_values in column_unique_dict.items():
+    if col not in ['type']:
+        print(f"Column {col}: {sorted(unique_values)}")
 
 
-
-    score_values = []
-    time_values = []
-
-    categories = []
-    labels = []
-
-    for alg in algs:
-        if 'random walks' in alg:
-            for i in range(len(walks_count)):
-                alg = 'random walks ' + str(walks_count[i])
-                # i += 1
-                # print (alg,scores[alg])
-                score_values.append(scores[alg][0])
-                categories.append(alg)
-                labels.append(scores[alg][1])
-                time_values.append(times[alg])
-        else:
-            # print (alg,scores[alg])
-            score_values.append(scores[alg][0])
-            categories.append(alg)
-            labels.append(scores[alg][1])
-            time_values.append(times[alg])
-            
-
-    # Quality: Score per Algorithm for a single table
-    plt.figure()
-    bars = plt.bar(categories, score_values)
-
-
-    if not ignore_possibles:
-        for i, bar in enumerate(bars):          # adding possibles as labels
-            yval = bar.get_height()
-            plt.text(bar.get_x() + bar.get_width() / 2, yval,   
-                    str(labels[i]),  
-                    ha='center', va='bottom', fontsize=10)
-
-    plt.xlabel('Algorithm')
-    plt.ylabel('Score')
-    plt.title('Algorithm quality for '+str(max_rows)+' rows from the Homes dataset')
-
-    plt.xticks(rotation=20, fontsize=9) 
-    plt.yticks(range(0, round(max(score_values)*1.2), 1))
-
-    plt.tight_layout()
-
-    if show_graphs:
-        plt.show()
-
-    if save_graphs:
-        plt.savefig('./real_images/homes_from'+str(len(data))+'_to_'+str(desired_size)+'_quality.png')
-    plt.close()
-
-
-    # Performance: Time per Algorithm for a single table
-
-    plt.figure()
-    bars = plt.bar(categories, time_values)
-
-    plt.xlabel('Algorithm')
-    plt.ylabel('Time')
-    plt.title('Algorithm performance for '+str(max_rows)+' rows from the Homes dataset')
-
-    plt.xticks(rotation=20, fontsize=9) 
-    # plt.yticks(range(0, round(max(score_values)*1.2), 1))
-
-    plt.yscale('log')
-    plt.tight_layout()
-
-    if save_graphs:
-        plt.savefig('./real_images/homes_from'+str(len(data))+'_to_'+str(desired_size)+'_performance.png')
-
-    if show_graphs:
-        plt.show()
-
-    plt.close()
 
 
 if desired_size_test: 
@@ -223,7 +122,7 @@ if desired_size_test:
     # algs = ['similarity', 'similarity minhash', 'greedy','random walks','merge greedy','sorted order','exhaustive']
     algs = ['similarity', 'similarity minhash']
     walks_count = [10]
-    print('testing desired size on Homes dataset with',len(data),'rows,',len(column_names),'columns, and desired size',test_sizes)
+    print('testing desired size on Cars dataset with',len(data),'rows,',len(column_names),'columns, and desired size',test_sizes)
 
     score_values = defaultdict(list)           # dict[alg] = list of values
     time_values = defaultdict(list)   
@@ -235,16 +134,18 @@ if desired_size_test:
     num_of_tries = 1        # there's no randomness involved
 
     for t in range(num_of_tries):
-        print('Runthrough number',t,'of desired size test on Homes')
+        print('Runthrough number',t,'of desired size test on Cars')
         k_dict = defaultdict(lambda:0)
 
         start = time.time()
         table = Table(columns = column_names, initial_list = data, domains_cardinality = domains, origin = 'lists', ignore_possibles=ignore_possibles)
-        print('the table starts with',table.get_size(),'rows')
+        print('the created table starts with',table.get_size(),'rows')
+        start2 = time.time()
+        print('checking merges:')
         table.check_merges()
         print('now the table has',table.get_size(),'rows')
         end = time.time()
-        print('Making the table object and removing duplicates took',end-start,'seconds')
+        print('Making the table object took', start2-start,'seconds, and removing duplicates took',end-start2,'seconds')
 
         for j, size_num in enumerate(test_sizes):
             print('starting desired size test with desired size', size_num)
@@ -319,7 +220,7 @@ if desired_size_test:
     plt.tight_layout()
 
     if save_graphs:
-        plt.savefig('./real_images/homes_from'+str(len(data))+'_to_'+str(test_sizes)+'_quality.png')
+        plt.savefig('./real_images/cars_from'+str(len(data))+'_to_'+str(test_sizes)+'_quality.png')
     
     if show_graphs:
         plt.show()
@@ -346,7 +247,7 @@ if desired_size_test:
     plt.tight_layout()
 
     if save_graphs:
-        plt.savefig('./real_images/homes_from'+str(len(data))+'_to_'+str(test_sizes)+'_performance.png')
+        plt.savefig('./real_images/cars_from'+str(len(data))+'_to_'+str(test_sizes)+'_performance.png')
     
     if show_graphs:
         plt.show()
@@ -374,7 +275,7 @@ if desired_size_test:
     plt.tight_layout()
 
     if save_graphs:
-        plt.savefig('./real_images/homes_from'+str(len(data))+'_to_'+str(test_sizes)+'_log_performance.png')
+        plt.savefig('./real_images/cars_from'+str(len(data))+'_to_'+str(test_sizes)+'_log_performance.png')
     
     if show_graphs:
         plt.show()
