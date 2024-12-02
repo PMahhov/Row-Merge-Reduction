@@ -80,7 +80,7 @@ def create_column_unique_dict(data, column_names):
 
 print('loading and filtering data')
 if use_full_db:
-    file_path = 'data/yahooAuto1M.CSV'
+    file_path = 'data/yahooAuto1M.csv'
     selected_columns = [5, 6, 8] + list(range(10, 44))
     data = load_and_filter_data(file_path, selected_columns)
     
