@@ -20,7 +20,7 @@ show_graphs = False
 single_table_test = False
 random_walks_test = False
 columns_test = True
-domains_test = True
+domains_test = False
 rows_test = False
 similarity_test = False
 similarity_test_2 = False
@@ -38,10 +38,10 @@ similar_tables = True       # if true, add columns or rows instead of making com
 # algorithm will not run on tables larger than this many columns
 alg_col_limit = {
     'exhaustive': 4,
-    'sorted order': 4,
-    'merge greedy': 5,
-    'random walks': 10,
-    'greedy': 20,
+    'sorted order': 5,
+    'merge greedy': 6,
+    'random walks': 12,
+    'greedy': 25,
     'similarity': None,
     'similarity minhash': None 
 }
@@ -587,7 +587,7 @@ if similarity_test:
         k_dict = defaultdict(lambda:0)
 
         for j, rows_num in enumerate(categories):
-            print('starting rows test with', rows_num, 'rows')
+            print('starting sim rows test 1 with', rows_num, 'rows')
             table = generate_table(rows_num, columns_num, domain_size)
             answers, scores, times = find_answer(table, desired_size, algs, walks_count, show_answers=False, ignore_possibles = ignore_possibles)
             
@@ -731,7 +731,7 @@ if similarity_test_2:
         k_dict = defaultdict(lambda:0)
 
         for j, rows_num in enumerate(categories):
-            print('starting rows test with', rows_num, 'rows')
+            print('starting sim rows test 2 with', rows_num, 'rows')
             table = generate_table(rows_num, columns_num, domain_size)
             answers, scores, times = find_answer(table, desired_size, algs, walks_count, show_answers=False, ignore_possibles = ignore_possibles)
             
@@ -853,7 +853,7 @@ if similarity_test_2:
 # Changing number of columns
 if columns_test:
     # test_columns = [2,3,4] 
-    test_columns = [2,3,4,5,6,8,10,12,20,50,100,200,300,500,1000]
+    test_columns = [2,3,4,5,6,8,10,12,15,20,25,30] #,100,200,300,500,1000]
     # algs = ['similarity', 'similarity minhash', 'greedy','random walks','merge greedy']
     algs = ['similarity', 'similarity minhash', 'greedy','random walks','merge greedy','sorted order','exhaustive']
     # algs = ['similarity', 'similarity minhash', 'greedy','random walks']
@@ -1049,7 +1049,7 @@ if columns_test:
 # Changing number of cols for fastest algs
 if sim_columns_test:
     # test_columns = [2,3,4] 
-    test_columns = [10,50,100,200,300,400,500,600,700,800,900,1000,1200,1500]#,1700,2000]
+    test_columns = [10,50,100,200,300,400,500,600,700,800,900,1000,1200]#,1500]#,1700,2000]
     # algs = ['similarity', 'similarity minhash', 'greedy','random walks','merge greedy']
     algs = ['similarity', 'similarity minhash']
     # algs = ['similarity', 'similarity minhash', 'greedy','random walks']
