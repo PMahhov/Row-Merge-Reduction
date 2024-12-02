@@ -39,7 +39,7 @@ similar_tables = True       # if true, add columns or rows instead of making com
 alg_col_limit = {
     'exhaustive': 4,
     'sorted order': 5,
-    'merge greedy': 6,
+    'merge greedy': 5,
     'random walks': 12,
     'greedy': 25,
     'similarity': None,
