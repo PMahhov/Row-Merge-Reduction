@@ -19,12 +19,12 @@ save_graphs = True
 single_table_test = False
 desired_size_test = True
 
-max_rows = 1000  #None         # how many rows to take at most, None is unlimited
+max_rows = 10000  #None         # how many rows to take at most, None is unlimited
 # max_rows = None
 # desired_size = [2000,3000,4000,5000,6000,7000,8000,9000]         # what is the maximum number of rows of the reduced database
-# desired_size = [9000,8000,7000,6000,5000]#,4000,3000,2000] 
+desired_size = [9000,8000,7000,6000,5000,4000,3500,3000]#,4000,3000,2000] 
 # desired_size = [4000,3000,2000] 
-desired_size = [900,800,700,600,500,400,300,200,100] 
+# desired_size = [900,800,700,600,500,400,300,200,100] 
 # desired_size = [20000,15000,10000]
 
 
